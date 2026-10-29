@@ -243,7 +243,7 @@ function japanEvent(st) {
   st.japanDone = true;
   const ev = [{ t: "jp1" }, { t: "jp2" }];
   const jps = teamIdx(st).filter(i => st.members[i].region === "japan");
-  if (jps.length) {
+  if (jps.length && jps.length < teamIdx(st).length) { // 일본 카드만 남았으면 넘기지 않는다(바로 지는 일이 없게)
     jps.forEach(i => {
       const m = st.members[i];
       m.foe = true;

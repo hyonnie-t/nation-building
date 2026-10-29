@@ -214,6 +214,15 @@ t("일본 이벤트(일본 카드 없음): 보스 HP +30, 공격 +3, 일본이 �
   assert.equal(st.boss.hp, hp0 + 30); assert.equal(st.boss.atk, atk0 + 3);
 });
 
+t("일본 카드만 남았으면 넘기지 않는다(바로 지지 않게)", () => {
+  const st = L.newRaid([mk("japan", 3, 3, 3), mk("japan", 3, 3, 3)], "group");
+  st.members.forEach(m => { m.hp = m.max = 200; });
+  const ev = toThird(st);
+  assert.ok(ev.some(e => e.t === "jpAlly"));
+  assert.equal(st.over, "");
+  assert.equal(L.teamIdx(st).length, 2);
+});
+
 t("보스 HP: 모둠 인원·최종 보스전 공식", () => {
   const two = [mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)];
   const g = ctx.RAID.group, f = ctx.RAID.final;

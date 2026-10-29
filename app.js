@@ -14,7 +14,7 @@ const S = {
   part: 1, sid: "", name: "", grade: 0, ban: 0, preview: false,
   placed: {}, cur: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
-  final: false, members: [], raid: null, msgs: [], modalOpen: false, basicFor: null, basicRegion: "", who3: "",
+  final: false, members: [], raid: null, msgs: [], modalOpen: false, basicFor: null, basicRegion: "", who3: "", doneSids: [], raidDone: false,
   copied: false, sending: false, submitted: false, padletUrl: "", padletLoading: false
 };
 const SAVE_KEYS = { 1: ["placed", "cur", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
@@ -72,7 +72,7 @@ function load() {
     if (!S.placed || typeof S.placed !== "object") S.placed = {};
     const ids = REGIONS.map(r => r.id);
     if (!Array.isArray(S.rank) || S.rank.length !== ids.length || ids.some(id => S.rank.indexOf(id) < 0)) S.rank = ids;
-    if (!S.stars || typeof S.stars !== "object") S.stars = { lead: 0, guard: 0, unity: 0 };
+    if (!S.stars || typeof S.stars !== "object" || starSum(S.stars) > RAID.starTotal) S.stars = { lead: 0, guard: 0, unity: 0 };
   } catch (e) { /* 무시 */ }
 }
 
@@ -984,6 +984,7 @@ async function loadMember() {
   } catch (e) {
     $("mErr").textContent = e.needLogin && !pw ? "비밀번호를 넣고 다시 눌러 줘." : (e.message || "불러오지 못했어.");
     $("mLoad").disabled = false; $("mLoad").textContent = "카드 불러오기";
+    $("mPw").value = "";
     showBasic(sid, name, session);
     return;
   }
@@ -1055,7 +1056,7 @@ function pushEvents(evs) {
     else if (e.t === "guard") S.msgs.push(PART3.msgGuard(regionShort(mem(e.who)), e.amt));
     else if (e.t === "heal") S.msgs.push(PART3.msgHeal(regionShort(mem(e.who)), regionShort(mem(e.to)), e.amt));
     else if (e.t === "boss") {
-      S.msgs.push((e.name ? PART3.msgBoss(e.name) : PART3.msgPress) + (e.weak ? PART3.msgWeak : "") + PART3.msgHit(regionShort(mem(e.to)), e.dmg, e.blocked));
+      S.msgs.push((e.name ? PART3.msgBoss(e.name) : PART3.msgPress) + PART3.msgHit(regionShort(mem(e.to)), e.dmg, e.blocked) + (e.weak ? PART3.msgWeak : ""));
     } else if (e.t === "down") S.msgs.push(PART3.msgDown(regionShort(mem(e.who))));
     else if (e.t === "jp1") { S.msgs.push(PART3.jp1); console.log("[raid] japan event after boss turn", st.bossTurns); }
     else if (e.t === "jp2") S.msgs.push(PART3.jp2);
@@ -1168,6 +1169,7 @@ function renderArena() {
 
 function showRaidEnd() {
   const st = S.raid;
+  S.raidDone = true;
   const win = st.over === "win";
   $("raidEnd").hidden = false;
   $("endTitle").textContent = win ? PART3.winTitle : PART3.loseTitle;
@@ -1178,8 +1180,9 @@ function showRaidEnd() {
   ul.appendChild(el("li", "", PART3.recResult(win)));
   ul.appendChild(el("li", "", PART3.recHp(team.map(m => regionShort(m) + " " + m.hp).join(", "))));
   ul.appendChild(el("li", "", PART3.recDown(team.filter(m => m.down).map(regionShort).join(", "))));
-  $("endRep").hidden = S.final;
-  $("endRep").textContent = PART3.pickRep;
+  $("endRep").textContent = S.final ? PART3.finalQ : PART3.pickRep; // 최종 보스전은 마무리 질문을 크게
+  $("endRep").classList.toggle("final-q", S.final);
+  if (!S.final) $("finalBox").hidden = false;
   $("raidRetry").hidden = win;
   $("raidRetry").textContent = PART3.retryBtn;
 }
@@ -1192,7 +1195,7 @@ function retryRaid() {
 /* ── 마무리 제출: 모둠 기기에서 학생마다 한 번씩, 고른 학생 학번으로 ── */
 function renderWho3() {
   if (S.final) return;
-  const opts = S.members.filter(m => m.sid).map(m => ({ id: m.sid, name: m.name + (m.done ? " ✓ 제출함" : "") }));
+  const opts = S.members.filter(m => m.sid).map(m => ({ id: m.sid, name: m.name + (S.doneSids.indexOf(m.sid) >= 0 ? " ✓ 제출함" : "") }));
   if (opts.every(o => o.id !== S.who3)) S.who3 = "";
   radioGroup3($("who3"), opts);
 }
@@ -1214,7 +1217,7 @@ async function submitPart3() {
   if (S.sending) return;
   const m = S.members.find(x => x.sid === S.who3);
   if (!m) { $("p3Err").textContent = "제출할 사람을 골라 줘."; return; }
-  if (m.done) { $("p3Err").textContent = m.name + "은(는) 이미 제출했어."; return; }
+  if (S.doneSids.indexOf(m.sid) >= 0) { $("p3Err").textContent = m.name + "은(는) 이미 제출했어."; return; }
   const t = val("t3");
   if (t.length < 5 && !skip()) { $("p3Err").textContent = "한두 문장 써 줘."; return; }
   if (t.length < PART3.finalMin && !skip() && !confirm("아직 " + t.length + "자야. 그래도 제출할까?")) return;
@@ -1231,7 +1234,7 @@ async function submitPart3() {
       group: S.members.map(x => x.sid).filter(Boolean), writing: t, ts: new Date().toISOString() })
   };
   if (m.session) payload.session = m.session; // 친구는 그 친구 세션으로(없으면 portal_auth가 이 기기 세션을 붙인다)
-  Object.assign(payload, FocusGuard.payload());
+  if (m.sid === S.sid) Object.assign(payload, FocusGuard.payload()); // 작성 과정 신호는 이 기기를 연 학생 것이라 그 학생 제출에만
   try {
     await postToSheet(payload);
   } catch (e) {
@@ -1239,7 +1242,7 @@ async function submitPart3() {
     S.sending = false; $("p3Submit").disabled = false; $("p3Submit").textContent = PART3.submitBtn;
     return;
   }
-  S.sending = false; m.done = true;
+  S.sending = false; S.doneSids.push(m.sid);
   $("t3").value = ""; $("t3c").textContent = "0자";
   $("p3Submit").disabled = false; $("p3Submit").textContent = PART3.submitBtn;
   $("p3Out").textContent = S.preview ? "미리보기라 저장하지 않았어." : m.name + " 제출했어! 다음 사람을 골라.";
@@ -1306,7 +1309,7 @@ function init() {
   $("raidStart").textContent = PART3.startBtn;
   $("jpQ").textContent = PART3.jpQ;
   $("jpGo").textContent = PART3.jpGo;
-  $("finalBox").hidden = S.final;
+  $("finalBox").hidden = true; // 모둠 레이드가 끝나면 연다(전자칠판은 저장 없음)
   $("who3Q").textContent = PART3.who3Q;
   $("finalTitle").textContent = PART3.finalTitle;
   $("finalQ").textContent = PART3.finalQ;
