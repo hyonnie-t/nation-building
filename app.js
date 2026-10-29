@@ -21,6 +21,8 @@ const OTHER = { id: "other", name: "그 밖의 지역" };
 const $ = id => document.getElementById(id);
 const byId = (arr, id) => arr.find(x => x.id === id);
 const val = id => $(id).value.trim();
+/* 교사 미리보기(?preview=1)에서는 필수 활동을 안 해도 다음으로 넘어간다(효니 2026-10-29). 학생 화면은 그대로. */
+const skip = () => S.preview;
 const ALL_CARDS = () => CARDS.concat(TRAPS);
 
 function el(tag, cls, text) {
@@ -124,7 +126,7 @@ function startApp() {
   load();
   if (S.part === 1) {
     renderBoard();
-    if (S.done1) showDone1();
+    if (S.done1 || skip()) showDone1(); // 미리보기는 분류판을 다 맞추지 않아도 아래 정리·제출 칸을 함께 연다
     show("p1");
     setTimeout(() => { $("t1c").textContent = val("t1").length + "자"; }, 700);
   } else {
@@ -333,7 +335,7 @@ function renderSumList(box) {
 
 function showDone1() {
   $("boardMsg").textContent = "";
-  $("boardCheck").hidden = true;
+  $("boardCheck").hidden = S.done1;
   renderSumList($("sumList"));
   $("p1Done").hidden = false;
   renderP1Submit();
@@ -345,10 +347,10 @@ function renderP1Submit() {
 }
 
 async function submitPart1() {
-  if (S.sending || S.submitted || !S.done1) return;
+  if (S.sending || S.submitted || (!S.done1 && !skip())) return;
   const t = val("t1");
-  if (t.length < 5) { $("p1Err").textContent = "지금 생각을 한두 문장 써 줘."; return; }
-  if (t.length < PART1.thinkMin && !confirm("아직 " + t.length + "자야. 그래도 제출할까?")) return;
+  if (t.length < 5 && !skip()) { $("p1Err").textContent = "지금 생각을 한두 문장 써 줘."; return; }
+  if (t.length < PART1.thinkMin && !skip() && !confirm("아직 " + t.length + "자야. 그래도 제출할까?")) return;
   $("p1Err").textContent = "";
   S.sending = true; renderP1Submit(); $("p1Submit").textContent = "보내는 중…";
   const payload = {
@@ -472,12 +474,12 @@ async function submitPart2() {
   if (S.sending || S.submitted) return;
   $("outErr").textContent = "";
   const prob = p2Problem();
-  if (prob) { $("p2Err").textContent = prob[1]; $(prob[0]).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  if (prob && !skip()) { $("p2Err").textContent = prob[1]; $(prob[0]).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
   $("p2Err").textContent = "";
   const noPage = ["pg1", "pg2", "pg3"].filter(id => !val(id)).map(id => id.slice(2) + "번");
-  if (noPage.length && !confirm(noPage.join("·") + " 칸에 교과서 쪽수가 없어. 그래도 제출할까?")) return;
+  if (noPage.length && !skip() && !confirm(noPage.join("·") + " 칸에 교과서 쪽수가 없어. 그래도 제출할까?")) return;
   const total = counts().total;
-  if (total < PART2.totalMin && !confirm("아직 " + total + "자야. " + PART2.totalMin + "자보다 짧은데 그래도 제출할까?")) return;
+  if (total < PART2.totalMin && !skip() && !confirm("아직 " + total + "자야. " + PART2.totalMin + "자보다 짧은데 그래도 제출할까?")) return;
   S.sending = true; $("submitBtn").disabled = true; $("submitBtn").textContent = "보내는 중…";
   const payload = {
     studentId: S.sid, studentName: S.name, gameName: CONFIG.GAME_NAME,
@@ -540,6 +542,7 @@ function init() {
   S.preview = q.get("preview") === "1";
   let sid = (q.get("sid") || "").trim(), name = (q.get("name") || "").trim();
   if (S.preview) {
+    $("previewBar").textContent = "미리보기 모드 — 저장되지 않아 · 활동을 다 안 해도 넘어갈 수 있어";
     $("previewBar").hidden = false;
     if (!sid) sid = "20512";
     if (!name) name = "미리보기";
