@@ -588,7 +588,7 @@ function init() {
   W_IDS.concat(["pg1", "pg2", "pg3"]).forEach(id => $(id).addEventListener("input", () => { $("p2Err").textContent = ""; refreshCounts(); }));
   $("copyBtn").addEventListener("click", copyOut);
   $("submitBtn").addEventListener("click", submitPart2);
-  Glossary.start({ terms: GLOSSARY, unique: true, skip: [".eyebrow", "h1", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".summary"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
+  Glossary.start({ terms: GLOSSARY, unique: true, skip: [".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".summary"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
 }
 
 init();
