@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<!-- 포털 로그인 세션 자동 첨부(history26 v83) -->
+<script src="https://hyonnie-t.github.io/history26/snippets/portal_auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>국민 국가 건설, 결과는 왜 달랐을까?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="previewBar" class="preview-bar" hidden>미리보기 모드 — 저장되지 않아</div>
+<main class="page">
+  <header class="book-head">
+    <div id="eyebrow" class="eyebrow">세계사 주제35~39 · 아시아의 국민 국가 건설 운동</div>
+    <h1 id="appTitle"></h1>
+  </header>
+
+  <!-- S0 시작 -->
+  <section id="s0" class="screen">
+    <div class="card">
+      <p id="introQ" class="lead"></p>
+      <p id="introLead" class="note"></p>
+    </div>
+    <div class="card">
+      <label for="sid">학번 (5자리, 예: 20512)</label>
+      <input id="sid" inputmode="numeric" maxlength="5" autocomplete="off">
+      <label for="sname">이름</label>
+      <input id="sname" autocomplete="off">
+      <p id="startErr" class="err" role="alert"></p>
+      <button id="startBtn" class="btn wide">시작하기</button>
+    </div>
+  </section>
+
+  <!-- P1 1차시: 단서 카드 분류판 -->
+  <section id="p1" class="screen" hidden>
+    <div class="card">
+      <h2 id="boardQ"></h2>
+      <p id="boardHow" class="note"></p>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="boardHint"></p></details>
+    </div>
+    <div class="board-wrap">
+      <aside class="deck" aria-label="단서 카드 더미">
+        <div class="deck-head"><span>단서 카드</span><span id="deckCount" class="deck-count"></span></div>
+        <div id="deckCard" class="deck-card" tabindex="0"></div>
+        <div class="deck-nav">
+          <button id="deckPrev" class="btn btn-ghost btn-sm" aria-label="앞 카드">◀ 앞</button>
+          <button id="deckNext" class="btn btn-ghost btn-sm" aria-label="다음 카드">다음 ▶</button>
+        </div>
+        <p class="deck-tip note">이 카드를 놓을 칸을 눌러.</p>
+      </aside>
+      <div class="board-side">
+        <div class="board-cols" aria-hidden="true">
+          <span></span><span id="col0"></span><span id="col1"></span><span id="col2"></span>
+        </div>
+        <div id="board" class="board"></div>
+        <div id="trapSlot" class="trap" data-key="trap" role="button" tabindex="0">
+          <div class="trap-head"><b id="trapName"></b> <span id="trapDesc" class="note"></span></div>
+          <div id="trapList" class="trap-list"></div>
+        </div>
+        <p id="boardMsg" class="err" role="alert"></p>
+        <button id="boardCheck" class="btn wide">맞춰 보기</button>
+      </div>
+    </div>
+    <div id="p1Done" class="card" hidden>
+      <h2 id="doneTitle"></h2>
+      <p id="doneLead" class="note"></p>
+      <ol id="sumList" class="sum-list"></ol>
+      <label for="t1" id="thinkQ" class="q"></label>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="thinkHint"></p></details>
+      <textarea id="t1" rows="3"></textarea>
+      <div class="count" id="t1c"></div>
+      <p id="p1Err" class="err" role="alert"></p>
+      <button id="p1Submit" class="btn wide">제출</button>
+      <p id="p1Out" class="note" role="status"></p>
+    </div>
+  </section>
+
+  <!-- P2 2차시: 개인 탐구 글 -->
+  <section id="p2" class="screen" hidden>
+    <details class="card ref" open>
+      <summary id="refTitle"></summary>
+      <p id="refNote" class="note"></p>
+      <ol id="refList" class="sum-list"></ol>
+    </details>
+
+    <div class="card">
+      <label id="q1" class="q first"></label>
+      <div id="regionPick" class="opt-grid"></div>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="q1Hint"></p></details>
+      <textarea id="w1" rows="4" aria-labelledby="q1"></textarea>
+      <div class="row-meta"><label class="page-label">교과서 <input id="pg1" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="w1c"></span></div>
+    </div>
+
+    <div class="card">
+      <label for="w2" id="q2" class="q first"></label>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="q2Hint"></p></details>
+      <textarea id="w2" rows="3"></textarea>
+      <div class="row-meta"><label class="page-label">교과서 <input id="pg2" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="w2c"></span></div>
+    </div>
+
+    <div class="card">
+      <label id="q3" class="q first"></label>
+      <div id="comparePick" class="opt-grid"></div>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="q3Hint"></p></details>
+      <textarea id="w3" rows="4" aria-labelledby="q3"></textarea>
+      <div class="row-meta"><label class="page-label">교과서 <input id="pg3" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="w3c"></span></div>
+    </div>
+
+    <div class="card">
+      <label for="w4" id="q4" class="q first"></label>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="q4Hint"></p></details>
+      <textarea id="w4" rows="5"></textarea>
+      <div class="row-meta"><span></span><span class="count" id="w4c"></span></div>
+      <p id="must" class="must"></p>
+      <p id="p2Err" class="err" role="alert"></p>
+    </div>
+
+    <div class="card">
+      <p id="wrapGuide" class="lead"></p>
+      <div id="summary" class="summary"></div>
+      <p id="bodyCount" class="note"></p>
+      <p id="outErr" class="err" role="alert"></p>
+      <div class="btn-row">
+        <button id="submitBtn" class="btn">제출</button>
+        <button id="copyBtn" class="btn btn-ghost"></button>
+      </div>
+      <p id="outMsg" class="note" role="status"></p>
+      <div class="padlet-box">
+        <p class="padlet-guide">제출하고 나서 글을 복사해서, 우리 반 패들렛에 붙여넣어 올려 줘.</p>
+        <a id="padletBtn" class="btn btn-ghost wide" target="_blank" rel="noopener" hidden></a>
+        <p id="padletMsg" class="note"></p>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="focus_guard.js"></script>
+<script src="glossary.js"></script>
+<script src="draft_guard.js"></script>
+<script src="data.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
