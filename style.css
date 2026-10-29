@@ -4,7 +4,7 @@
 :root{
   --paper:#e6e8ef;--page:#fcfcfe;--ink:#22233a;--muted:#555870;--line:#cdd0dc;
   --indigo:#3b3a78;--indigo-deep:#28275a;--indigo-wash:#ebeaf6;
-  --saffron:#b4721a;--saffron-wash:#fbf0de;
+  --saffron:#b4721a;--saffron-wash:#fbf0de;--saffron-ink:#8a5410; /* 글자·흰 글자 바탕용(대비 4.5:1 이상) */
   --jade:#2f7465;--jade-wash:#e3f1ec;
   --alert:#b0302a;
   --serif:"Noto Serif KR","Batang",serif;--sans:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif
@@ -15,11 +15,11 @@ html{font-size:17px}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);line-height:1.8}
 .page{max-width:760px;margin:0 auto;padding:12px 16px 72px}
 body.wide .page{max-width:1240px}
-.preview-bar{background:var(--saffron);color:#fff;text-align:center;padding:6px;font:500 16px var(--sans)}
+.preview-bar{background:var(--saffron-ink);color:#fff;text-align:center;padding:6px;font:500 16px var(--sans)}
 
 /* 머리 */
 .book-head{padding:16px 0 4px}
-.eyebrow{display:inline-block;color:var(--saffron);font:700 16px var(--sans);letter-spacing:.03em;border-bottom:2px solid var(--saffron);padding-bottom:2px}
+.eyebrow{display:inline-block;color:var(--saffron-ink);font:700 16px var(--sans);letter-spacing:.03em;border-bottom:2px solid var(--saffron);padding-bottom:2px}
 h1{font:700 1.85rem/1.35 var(--serif);margin:10px 0 14px;color:var(--indigo-deep)}
 h2{font:700 1.25rem/1.55 var(--serif);margin:0 0 10px;color:var(--indigo-deep)}
 
@@ -64,7 +64,7 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .board-wrap{display:block}
 .deck{position:sticky;top:0;z-index:5;background:var(--page);border:1px solid var(--line);border-radius:5px;padding:12px 14px;margin-bottom:12px;box-shadow:0 2px 6px rgba(34,35,58,.12)}
 .deck-head{display:flex;justify-content:space-between;align-items:baseline;font:700 16px var(--sans);color:var(--indigo-deep)}
-.deck-count{color:var(--saffron)}
+.deck-count{color:var(--saffron-ink)}
 .deck-card{margin-top:8px;padding:12px 14px;border:1px solid #d7b06f;border-left:5px solid var(--saffron);border-radius:4px;background:var(--saffron-wash);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .deck-card.lifted{opacity:.45}
 .deck-card.empty{border-color:var(--line);border-left-color:var(--jade);background:var(--jade-wash);cursor:default}
@@ -161,7 +161,7 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .rank-item{display:grid;grid-template-columns:52px 1fr 44px 44px;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:4px;background:#fff}
 .rank-item:first-child{border-color:var(--jade);background:var(--jade-wash)}
 .rank-item:last-child{border-color:#d9b2ad;background:#fbf1ef}
-.rank-no{font:700 16px var(--sans);color:var(--saffron)}
+.rank-no{font:700 16px var(--sans);color:var(--saffron-ink)}
 .rank-name{font:700 1.05rem var(--sans);color:var(--indigo-deep)}
 
 /* ══ 2부: 카드 만들기 칸 ══ */
@@ -211,24 +211,109 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .saved-box{margin-top:12px;text-align:center}
 .saved-box img{max-width:280px;width:100%;border-radius:12px;box-shadow:0 2px 8px rgba(34,35,58,.2)}
 
-/* ══ 3부: 대결 ══ */
-.p3-grid{display:grid;grid-template-columns:1fr;gap:0 16px}
-.rules-list{margin:0;padding-left:1.3em;font:16px/1.7 var(--sans)}
-.rules-list li+li{margin-top:6px}
-.score-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.score-cell{border:1px solid var(--line);border-radius:6px;padding:8px;text-align:center;background:#fafbfd}
-.score-cell>b{font:700 1.05rem var(--sans);color:var(--indigo-deep)}
-.score-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px}
-.score-n{font:900 1.6rem var(--sans);min-width:1.6em}
+/* ══ 2부: 별 9개 ══ */
+.stars-left{margin:12px 0 0;font:700 17px var(--sans);color:var(--saffron-ink)}
+.stars-left.done{color:var(--jade)}
+.hint-list{margin:0;padding:0 14px 12px 2em;font:16px/1.7 var(--sans)}
+
+/* ══ 도트 캐릭터 ══ 96px 캔버스를 키울 때 흐려지지 않게 */
+.sprite{position:relative;display:inline-block;width:88px;height:88px;flex:none}
+.sprite canvas{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.sprite-sym{position:absolute;right:-6px;top:-10px;font-size:28px;line-height:1}
+.hc-sprite{width:128px;height:128px}
+.hc-sprite .sprite-sym{font-size:36px;right:-14px}
+
+/* ══ 3부: 열강 보스 레이드 ══ 보스 쪽은 차갑고 무거운 회청색, 모둠 쪽은 기존 책 지면 */
+.member-list{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
+.member{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.member .sprite{width:56px;height:56px}
+.member .sprite-sym{font-size:20px}
+.member-info{flex:1;display:flex;flex-direction:column;font:17px/1.4 var(--sans)}
+.member-info span{color:var(--muted);font-size:17px}
+.member .btn-sm{min-height:48px}
+.final-q{font:700 1.15rem/1.6 var(--serif)}
+.add-box{margin-top:14px;padding:12px 14px;border:1px dashed #aeb1c4;border-radius:6px;background:#fafbfd}
+.add-grid{display:grid;grid-template-columns:1fr;gap:0 12px}
+.add-grid label{margin-top:8px}
+.basic-box{margin-top:10px}
+.rules{margin-top:14px}
+.arena{margin-bottom:16px}
+.boss-zone{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:6px;background:linear-gradient(180deg,#2c3446,#3d4659);color:#eef1f6}
+.boss-side{display:flex;align-items:flex-end;gap:6px;flex:none}
+.boss-sprite{width:112px;height:112px}
+.ally-sprite{width:64px;height:64px}
+.boss-info{flex:1;min-width:0}
+.bi-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:700 20px var(--sans)}
+.boss-zone .hp-num{color:#d5dbe6}
+.hpbar{height:14px;border-radius:7px;background:#d9dbe4;overflow:hidden;margin-top:6px}
+.hpbar i{display:block;height:100%;background:var(--jade);transition:width .4s}
+.hpbar i.low{background:var(--alert)}
+.hpbar.boss{background:#1b2130;height:18px;border-radius:9px}
+.hpbar.boss i{background:#e04848}
+.hp-num{font:500 16px var(--sans);color:var(--muted)}
+.msg-box{display:block;width:100%;min-height:76px;margin:12px 0;padding:14px 18px;border:3px solid var(--indigo-deep);border-radius:8px;background:#fff;text-align:left;font:700 19px/1.55 var(--sans);color:var(--ink);cursor:pointer}
+.msg-box:disabled{cursor:default;border-color:var(--line)}
+.msg-next{display:block;margin-top:4px;font:500 16px var(--sans);color:var(--saffron-ink);text-align:right}
+.skill-box{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}
+.skill-box .btn{margin-top:0;min-height:56px;font-size:18px}
+.skill-box .btn.sp{background:var(--saffron-ink);border-color:#6e430c}
+.skill-box .btn.foe-btn{background:#3d4659;border-color:#2c3446}
+.ctrl-q{margin:0;font:700 18px var(--sans);color:#3d4659}
+.team-zone{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fighter{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:2px solid var(--line);border-left:6px solid var(--c1);border-radius:6px;background:var(--page);transition:opacity .3s}
+.fighter.cur{border-color:var(--saffron);border-left-color:var(--c1);box-shadow:0 0 0 3px rgba(180,114,26,.25)}
+.fighter.down{opacity:.4;filter:grayscale(.8)}
+.f-info{width:100%;display:flex;flex-direction:column;font:17px/1.35 var(--sans);text-align:center}
+.f-info b{font-size:18px}
+.f-name{color:var(--muted);font-size:17px}
+.f-move{font-size:17px;color:var(--indigo-deep)}
+.end-card h2{font-size:1.6rem}
+.end-record{margin:10px 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(28,34,48,.62);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.modal-card{max-width:560px;width:100%;background:var(--page);border-radius:8px;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.modal-card .lead{font-size:19px}
+@media (min-width:600px){
+  .add-grid{grid-template-columns:1fr 1fr 1fr}
+  .member-list{grid-template-columns:1fr 1fr}
+  .skill-box{grid-template-columns:repeat(3,1fr)}
+  .skill-box .ctrl-q{grid-column:1/-1}
+}
 @media (min-width:900px){
-  .p3-grid{grid-template-columns:minmax(360px,440px) 1fr}
+  .team-zone{grid-template-columns:repeat(4,1fr)}
+  .fighter .sprite{width:104px;height:104px}
+  .boss-sprite{width:150px;height:150px}
 }
 @media (max-width:599px){
   .rank-item{grid-template-columns:44px 1fr 44px 44px;gap:6px}
-  .score-board{grid-template-columns:1fr;gap:6px}
-  .score-cell{display:flex;justify-content:space-between;align-items:center;padding:6px 12px}
-  .score-row{margin-top:0}
+  .boss-sprite{width:84px;height:84px}
+  .ally-sprite{width:48px;height:48px}
+  .fighter .sprite{width:64px;height:64px}
+  .msg-box{font-size:17px}
 }
+
+/* ══ 전자칠판 최종 보스전(?part=3&final=1) ══ 1920 가로 기준, 본문 22px 이상 */
+body.eboard{font-size:22px}
+body.eboard .page{max-width:1840px}
+body.eboard h1{font-size:2.4rem}
+body.eboard h2{font-size:1.9rem}
+body.eboard .note,body.eboard label,body.eboard input,body.eboard .member-info,body.eboard .rules-list,body.eboard .end-record,body.eboard .f-info,body.eboard .hp-num,body.eboard .err{font-size:22px}
+body.eboard .btn{min-height:64px;font-size:24px}
+body.eboard .msg-box{font-size:30px;min-height:110px}
+body.eboard .skill-box .btn{min-height:76px;font-size:26px}
+body.eboard .ctrl-q{font-size:26px}
+body.eboard .bi-head{font-size:30px}
+body.eboard .boss-sprite{width:220px;height:220px}
+body.eboard .ally-sprite{width:110px;height:110px}
+body.eboard .team-zone{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+body.eboard .fighter .sprite{width:120px;height:120px}
+body.eboard .f-info b{font-size:26px}
+body.eboard .member .sprite{width:80px;height:80px}
+body.eboard .modal-card{max-width:900px}
+body.eboard .modal-card .lead{font-size:32px}
+body.eboard .end-card h2{font-size:2.6rem}
+body.eboard .end-card .lead{font-size:30px}
+body.eboard .final-q{font-size:32px}
 .opt[aria-disabled="true"],.sym[aria-disabled="true"]{cursor:default;opacity:.7}
 .star:disabled{cursor:default}
 .stars.small .star{min-width:40px;min-height:44px}
