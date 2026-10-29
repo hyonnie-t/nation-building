@@ -154,3 +154,81 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
   .deck-nav .btn{min-height:40px}
   .deck-tip{display:none}
 }
+
+/* ══ 1부: 순위 매기기 ══ */
+.sub-title{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.rank-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rank-item{display:grid;grid-template-columns:52px 1fr 44px 44px;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.rank-item:first-child{border-color:var(--jade);background:var(--jade-wash)}
+.rank-item:last-child{border-color:#d9b2ad;background:#fbf1ef}
+.rank-no{font:700 16px var(--sans);color:var(--saffron)}
+.rank-name{font:700 1.05rem var(--sans);color:var(--indigo-deep)}
+
+/* ══ 2부: 카드 만들기 칸 ══ */
+.sym-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.sym{display:flex;align-items:center;justify-content:center;width:72px;height:72px;font-size:40px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+.sym[aria-checked="true"]{border-color:var(--indigo);background:var(--indigo-wash);box-shadow:0 0 0 3px rgba(59,58,120,.18)}
+#mvName{margin-top:8px;font-weight:700}
+.stat-block{margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:#fafbfd}
+.stat-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.stat-name{font:700 1.05rem var(--sans);color:var(--indigo-deep)}
+.stat-q{margin:4px 0 0}
+.stars{display:flex;gap:2px}
+.star{min-width:44px;min-height:44px;border:0;background:none;font-size:30px;line-height:1;color:#b9a77a;cursor:pointer;padding:0}
+.star.on{color:#d18a10}
+.star:focus-visible{outline:3px solid #d9a24a;border-radius:6px}
+.stars.small .star{min-width:36px;min-height:40px;font-size:24px}
+
+/* ══ 역사 카드(포켓몬 카드처럼: 굵은 색 테두리·HP·그림 칸·기술 칸·아래 설명) ══ */
+.card-stage{display:flex;justify-content:center;padding:6px 0}
+.hcard{--c1:#6d6f86;--c2:#e1e2ea;width:100%;max-width:400px;border:12px solid var(--c1);border-radius:22px;background:linear-gradient(180deg,var(--c2),#fff 70%);padding:12px 14px 10px;font-family:var(--sans);color:#1f1f2e;box-shadow:0 6px 18px rgba(34,35,58,.25)}
+.hc-top{display:flex;justify-content:space-between;align-items:flex-end}
+.hc-name small{display:block;font:700 12px var(--sans);color:#555870;letter-spacing:.04em}
+.hc-name b{font:900 1.5rem/1.15 var(--sans)}
+.hc-hp{color:#b0302a;text-align:right;white-space:nowrap}
+.hc-hp small{font:700 14px var(--sans);margin-right:3px}
+.hc-hp b{font:900 1.7rem var(--sans)}
+.hc-art{margin-top:8px;height:150px;border:5px solid #c9a43a;border-radius:6px;background:radial-gradient(circle at 50% 50%,#fff,var(--c2));display:flex;align-items:center;justify-content:center}
+.hc-sym{font-size:84px;line-height:1}
+.hc-hit{margin:6px 4px 0;padding:6px 8px;background:rgba(255,255,255,.75);border-radius:4px;font:italic 14px/1.5 var(--sans);color:#3a3b52}
+.hc-move{margin-top:10px}
+.hc-move-head{display:flex;align-items:center;gap:8px}
+.hc-badge{background:var(--c1);color:#fff;font:700 13px var(--sans);padding:2px 10px;border-radius:999px;flex:none}
+.hc-move-head b{font:900 1.15rem var(--sans)}
+.hc-move p{margin:4px 0 0;font:15px/1.55 var(--sans)}
+.hc-stats{margin-top:10px;border-top:2px solid rgba(0,0,0,.12);padding-top:6px}
+.hc-stat{padding:4px 0}
+.hc-stat-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.hc-stat-head b{font:700 15px var(--sans)}
+.hc-stars{color:#c9871a;font-size:20px;letter-spacing:1px}
+.hc-fixed{font:700 12px var(--sans);color:#fff;background:var(--alert);border-radius:4px;padding:1px 6px}
+.hc-stat p{margin:0 0 0 24px;font:14px/1.5 var(--sans);color:#4a4b60}
+.hc-foot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;border-top:2px solid rgba(0,0,0,.12);padding-top:6px}
+.hc-foot b{font:700 14px var(--sans)}
+.hc-foot p{margin:2px 0 0;font:13px/1.5 var(--sans);color:#4a4b60}
+.hc-flavor{margin:8px 0 0;padding:6px 8px;background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.08);border-radius:4px;font:italic 13px/1.5 var(--sans);color:#3a3b52}
+.hc-owner{margin:6px 0 0;font:12px var(--sans);color:#555870;text-align:right}
+.saved-box{margin-top:12px;text-align:center}
+.saved-box img{max-width:280px;width:100%;border-radius:12px;box-shadow:0 2px 8px rgba(34,35,58,.2)}
+
+/* ══ 3부: 대결 ══ */
+.p3-grid{display:grid;grid-template-columns:1fr;gap:0 16px}
+.rules-list{margin:0;padding-left:1.3em;font:16px/1.7 var(--sans)}
+.rules-list li+li{margin-top:6px}
+.score-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.score-cell{border:1px solid var(--line);border-radius:6px;padding:8px;text-align:center;background:#fafbfd}
+.score-cell>b{font:700 1.05rem var(--sans);color:var(--indigo-deep)}
+.score-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px}
+.score-n{font:900 1.6rem var(--sans);min-width:1.6em}
+@media (min-width:900px){
+  .p3-grid{grid-template-columns:minmax(360px,440px) 1fr}
+}
+@media (max-width:599px){
+  .rank-item{grid-template-columns:44px 1fr 44px 44px;gap:6px}
+  .score-board{grid-template-columns:1fr;gap:6px}
+  .score-cell{display:flex;justify-content:space-between;align-items:center;padding:6px 12px}
+  .score-row{margin-top:0}
+}
+.opt[aria-disabled="true"],.sym[aria-disabled="true"]{cursor:default;opacity:.7}
+.star:disabled{cursor:default}
+.stars.small .star{min-width:40px;min-height:44px}

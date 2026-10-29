@@ -50,4 +50,80 @@ function charCounts(texts) {
   return out;
 }
 
-if (typeof module !== "undefined") module.exports = { TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts };
+/* 1부 순위: i번째를 d(-1 위로, +1 아래로)만큼 옮긴 새 배열. 끝에서 더 못 가면 그대로. */
+function moveRank(rank, i, d) {
+  const j = i + d;
+  if (i < 0 || i >= rank.length || j < 0 || j >= rank.length) return rank.slice();
+  const a = rank.slice();
+  const t = a[i]; a[i] = a[j]; a[j] = t;
+  return a;
+}
+
+/* ── 2·3부 캐릭터 카드 ──
+ * card: { region, compare, sym, hit, pgHit, mvName, w1, pg1, w2, pg2,
+ *         stats: { lead: { n, r, p }, guard: {…}, unity: {…} }, w3, pg3, w4 }
+ * 시트 G열(reflection)에 사람이 읽는 글로 남기고, 3부는 그 글을 다시 읽어 카드로 되살린다. */
+function oneLine(s) { return String(s == null ? "" : s).replace(/\s*\n+\s*/g, " ").trim(); }
+function cleanPage(p) { return oneLine(p).replace(/[()]/g, "").replace(/쪽$/, "").trim(); }
+function withPage(text, p) { const q = cleanPage(p); return oneLine(text) + (q ? " (" + q + "쪽)" : ""); }
+function hp(stats) { return ["lead", "guard", "unity"].reduce((s, k) => s + ((stats && stats[k] && stats[k].n) || 0), 0) * 10; }
+
+function nameOf(list, id) { const x = list.find(r => r.id === id); return x ? x.name : ""; }
+
+function cardText(c, regions, statDefs) {
+  const lines = ["[역사 카드] " + (nameOf(regions, c.region) || "?") + " " + (c.sym || "") + " · 라이벌 " + (nameOf(regions, c.compare) || "?")];
+  lines.push("당한 일: " + withPage(c.hit, c.pgHit));
+  lines.push("필살기 «" + oneLine(c.mvName) + "»: " + withPage(c.w1, c.pg1));
+  lines.push("약점: " + withPage(c.w2, c.pg2));
+  statDefs.forEach(d => {
+    const s = (c.stats && c.stats[d.id]) || {};
+    lines.push(d.icon + " " + d.name + " ★" + (s.n || 0) + ": " + withPage(s.r, s.p));
+  });
+  lines.push("라이벌 " + (nameOf(regions, c.compare) || "?") + ": " + withPage(c.w3, c.pg3));
+  lines.push("결과를 가른 것: " + oneLine(c.w4));
+  return lines.join("\n");
+}
+
+/* 끝의 « (○쪽)»을 떼어 [본문, 쪽] */
+function splitPage(s) {
+  const m = String(s).match(/^(.*?)\s*\(([^()]*?)쪽\)\s*$/);
+  return m ? [m[1].trim(), m[2].trim()] : [String(s).trim(), ""];
+}
+
+function parseCardText(text, regions, statDefs) {
+  const lines = String(text || "").split(/\r?\n/);
+  const head = lines.find(l => l.indexOf("[역사 카드] ") === 0);
+  if (!head) return null;
+  const c = { stats: {} };
+  const hm = head.slice("[역사 카드] ".length).match(/^(.*) · 라이벌 (.*)$/);
+  if (!hm) return null;
+  const left = hm[1].trim();
+  const reg = regions.slice().sort((a, b) => b.name.length - a.name.length).find(r => left.indexOf(r.name) === 0);
+  if (!reg) return null;
+  c.region = reg.id;
+  c.sym = left.slice(reg.name.length).trim();
+  const cmp = regions.find(r => r.name === hm[2].trim());
+  c.compare = cmp ? cmp.id : "";
+  const after = (prefix) => { const l = lines.find(x => x.indexOf(prefix) === 0); return l == null ? null : l.slice(prefix.length); };
+  let v;
+  if ((v = after("당한 일: ")) != null) [c.hit, c.pgHit] = splitPage(v);
+  const mv = lines.find(l => l.indexOf("필살기 «") === 0);
+  if (mv) {
+    const m = mv.match(/^필살기 «(.*?)»: (.*)$/);
+    if (m) { c.mvName = m[1]; [c.w1, c.pg1] = splitPage(m[2]); }
+  }
+  if ((v = after("약점: ")) != null) [c.w2, c.pg2] = splitPage(v);
+  statDefs.forEach(d => {
+    const l = lines.find(x => x.indexOf(d.icon + " " + d.name + " ★") === 0);
+    if (!l) { c.stats[d.id] = { n: 0, r: "", p: "" }; return; }
+    const m = l.slice((d.icon + " " + d.name + " ★").length).match(/^(\d)(?::\s?(.*))?$/);
+    const [r, p] = splitPage(m && m[2] ? m[2] : "");
+    c.stats[d.id] = { n: m ? Number(m[1]) : 0, r: r, p: p };
+  });
+  const rv = lines.find(l => /^라이벌 [^·]*: /.test(l) && l.indexOf("[역사 카드]") < 0);
+  if (rv) [c.w3, c.pg3] = splitPage(rv.replace(/^라이벌 [^:]*: /, ""));
+  if ((v = after("결과를 가른 것: ")) != null) c.w4 = v.trim();
+  return c;
+}
+
+if (typeof module !== "undefined") module.exports = { TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts, moveRank, oneLine, cleanPage, hp, cardText, parseCardText };
