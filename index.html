@@ -123,25 +123,22 @@
 
     <div class="card">
       <p id="statQ" class="q first"></p>
-      <details class="hint"><summary>💡 대결 규칙 미리 보기</summary><p id="statHint"></p></details>
+      <p id="statNote" class="note"></p>
+      <details class="hint"><summary>💡 막막하면 힌트 보기</summary><ul id="statHint" class="hint-list"></ul></details>
       <div class="stat-block" data-stat="lead">
         <div class="stat-head"><b class="stat-name"></b><div class="stars" id="star_lead" role="radiogroup"></div></div>
-        <p class="stat-q note"></p>
-        <textarea id="r_lead" rows="2" aria-label="개혁 추진력 근거"></textarea>
-        <div class="row-meta"><label class="page-label">교과서 <input id="p_lead" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="r_leadc"></span></div>
       </div>
       <div class="stat-block" data-stat="guard">
         <div class="stat-head"><b class="stat-name"></b><div class="stars" id="star_guard" role="radiogroup"></div></div>
-        <p class="stat-q note"></p>
-        <textarea id="r_guard" rows="2" aria-label="외세 방어력 근거"></textarea>
-        <div class="row-meta"><label class="page-label">교과서 <input id="p_guard" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="r_guardc"></span></div>
       </div>
       <div class="stat-block" data-stat="unity">
         <div class="stat-head"><b class="stat-name"></b><div class="stars" id="star_unity" role="radiogroup"></div></div>
-        <p class="stat-q note"></p>
-        <textarea id="r_unity" rows="2" aria-label="안의 단결력 근거"></textarea>
-        <div class="row-meta"><label class="page-label">교과서 <input id="p_unity" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="r_unityc"></span></div>
       </div>
+      <p id="starsLeft" class="stars-left" role="status"></p>
+      <label for="r_top" id="reasonQ" class="q"></label>
+      <div id="reasonPick" class="opt-grid" hidden></div>
+      <textarea id="r_top" rows="2"></textarea>
+      <div class="row-meta"><label class="page-label">교과서 <input id="p_top" class="page-in" data-draft inputmode="numeric" maxlength="12"> 쪽</label><span class="count" id="r_topc"></span></div>
     </div>
 
     <div class="card">
@@ -184,31 +181,61 @@
     </div>
   </section>
 
-  <!-- P3 3차시: 내 카드로 모둠 대결(정리) -->
+  <!-- P3 3차시: 모둠 열강 보스 레이드(정리, 평가 아님) / ?final=1이면 전자칠판 최종 보스전 -->
   <section id="p3" class="screen" hidden>
-    <div class="p3-grid">
-      <div class="card">
-        <h2 id="myCardTitle"></h2>
-        <p id="p3Msg" class="note" role="status"></p>
-        <div id="cardView3" class="card-stage"></div>
-        <p id="editNote" class="note"></p>
-      </div>
-      <div>
-        <div class="card">
-          <h2 id="rulesTitle"></h2>
-          <ol id="rulesList" class="rules-list"></ol>
+    <div id="raidSetup" class="card">
+      <h2 id="setupTitle"></h2>
+      <p id="setupNote" class="note"></p>
+      <p id="p3Msg" class="note" role="status"></p>
+      <ol id="memberList" class="member-list"></ol>
+      <div id="addBox" class="add-box">
+        <div class="add-grid">
+          <label>학번 <input id="mSid" inputmode="numeric" maxlength="5" autocomplete="off" data-no-draft></label>
+          <label>이름 <input id="mName" autocomplete="off" data-no-draft></label>
+          <label>비밀번호 <input id="mPw" type="password" autocomplete="off" data-no-draft></label>
         </div>
-        <div class="card">
-          <h2 id="scoreTitle"></h2>
-          <div id="scoreBoard" class="score-board"></div>
+        <p id="mPwNote" class="note"></p>
+        <button id="mLoad" class="btn">카드 불러오기</button>
+        <p id="mErr" class="err" role="alert"></p>
+        <div id="basicBox" class="basic-box" hidden>
+          <p id="basicNote" class="note"></p>
+          <div id="basicPick" class="opt-grid"></div>
+          <button id="basicJoin" class="btn btn-ghost">기본 카드로 참가</button>
         </div>
       </div>
+      <details class="hint rules"><summary id="rulesTitle"></summary><ol id="rulesList" class="rules-list"></ol></details>
+      <p id="setupErr" class="err" role="alert"></p>
+      <button id="raidStart" class="btn wide">열강과 싸우기 시작</button>
     </div>
-    <div class="card">
+
+    <div id="raidArena" class="arena" hidden>
+      <div class="boss-zone">
+        <div id="bossSide" class="boss-side"></div>
+        <div class="boss-info">
+          <div class="bi-head"><b id="bossName"></b><span id="bossHp" class="hp-num"></span></div>
+          <div class="hpbar boss"><i id="bossBar"></i></div>
+        </div>
+      </div>
+      <button id="msgBox" class="msg-box" type="button" aria-live="polite"></button>
+      <div id="skillBox" class="skill-box"></div>
+      <div id="teamZone" class="team-zone"></div>
+    </div>
+
+    <div id="raidEnd" class="card end-card" hidden>
+      <h2 id="endTitle"></h2>
+      <p id="endQ" class="lead"></p>
+      <ul id="endRecord" class="end-record"></ul>
+      <p id="endRep" class="must"></p>
+      <button id="raidRetry" class="btn btn-ghost" hidden></button>
+    </div>
+
+    <div id="finalBox" class="card">
       <h2 id="finalTitle"></h2>
-      <label for="t3" id="finalQ" class="q first"></label>
+      <p id="who3Q" class="q first"></p>
+      <div id="who3" class="opt-grid"></div>
+      <label for="t3" id="finalQ" class="q"></label>
       <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="finalHint"></p></details>
-      <textarea id="t3" rows="3"></textarea>
+      <textarea id="t3" rows="3" data-no-draft></textarea>
       <div class="count" id="t3c"></div>
       <p id="p3Err" class="err" role="alert"></p>
       <button id="p3Submit" class="btn wide">제출</button>
@@ -216,6 +243,12 @@
     </div>
   </section>
 </main>
+<div id="jpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="jpQ" hidden>
+  <div class="modal-card">
+    <p id="jpQ" class="lead"></p>
+    <button id="jpGo" class="btn wide" disabled></button>
+  </div>
+</div>
 <div id="toast" class="toast" role="status" hidden></div>
 <script src="focus_guard.js"></script>
 <script src="glossary.js"></script>
