@@ -192,9 +192,7 @@
         <div class="add-grid">
           <label>학번 <input id="mSid" inputmode="numeric" maxlength="5" autocomplete="off" data-no-draft></label>
           <label>이름 <input id="mName" autocomplete="off" data-no-draft></label>
-          <label>비밀번호 <input id="mPw" type="password" autocomplete="off" data-no-draft></label>
         </div>
-        <p id="mPwNote" class="note"></p>
         <button id="mLoad" class="btn">카드 불러오기</button>
         <p id="mErr" class="err" role="alert"></p>
         <div id="basicBox" class="basic-box" hidden>
@@ -206,6 +204,7 @@
       <details class="hint rules"><summary id="rulesTitle"></summary><ol id="rulesList" class="rules-list"></ol></details>
       <p id="setupErr" class="err" role="alert"></p>
       <button id="raidStart" class="btn wide">열강과 싸우기 시작</button>
+      <button id="finalOnly" class="btn btn-ghost wide"></button>
     </div>
 
     <div id="raidArena" class="arena" hidden>
@@ -231,11 +230,10 @@
 
     <div id="finalBox" class="card" hidden>
       <h2 id="finalTitle"></h2>
-      <p id="who3Q" class="q first"></p>
-      <div id="who3" class="opt-grid"></div>
+      <p id="who3Q" class="note"></p>
       <label for="t3" id="finalQ" class="q"></label>
       <details class="hint"><summary>💡 막막하면 힌트 보기</summary><p id="finalHint"></p></details>
-      <textarea id="t3" rows="3" data-no-draft></textarea>
+      <textarea id="t3" rows="3"></textarea>
       <div class="count" id="t3c"></div>
       <p id="p3Err" class="err" role="alert"></p>
       <button id="p3Submit" class="btn wide">제출</button>

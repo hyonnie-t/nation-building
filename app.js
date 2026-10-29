@@ -14,7 +14,7 @@ const S = {
   part: 1, sid: "", name: "", grade: 0, ban: 0, preview: false,
   placed: {}, cur: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
-  final: false, members: [], raid: null, msgs: [], modalOpen: false, basicFor: null, basicRegion: "", who3: "", doneSids: [], raidDone: false,
+  final: false, members: [], raid: null, msgs: [], modalOpen: false, basicFor: null, basicRegion: "", raidDone: false,
   copied: false, sending: false, submitted: false, padletUrl: "", padletLoading: false
 };
 const SAVE_KEYS = { 1: ["placed", "cur", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
@@ -915,30 +915,34 @@ function spriteEl(id, opts) {
 }
 
 /* ══ 3부: 열강 보스 레이드 ══ 카드는 포털 기록(mode=student)의 2차시 G열 글에서 되살린다.
- * 친구 카드: 이 기기에 로그인한 학생과 학번이 다르면 서버가 막으므로, 그 친구가 자기 비밀번호를 넣으면 그 자리에서 로그인해 세션을 받는다.
- * 받은 세션은 메모리에만 두고(기기에 남기지 않는다) 그 친구의 카드 읽기·마무리 제출에만 쓴다. */
+ * 친구 카드: mode=student는 이 기기에 로그인한 학생 것만 주므로(studentGate_), 친구 카드는 백엔드 v106 mode=sharedCard
+ * (허용 활동의 G열만, 학번+이름 일치)로 읽는다. 마무리 글 제출은 서버가 «로그인한 본인 학번»만 받으므로 이 기기를 연 학생만 내고,
+ * 친구들은 각자 자기 기기에서 3차시를 열어 «마무리만 쓰기»로 낸다. */
 const MAX_MEMBERS = () => S.final ? 8 : 4;
 const PREVIEW_REGIONS = ["ottoman", "thai", "japan", "joseon"];
 
 function regionShort(m) { return regionName(m.region); }
 function memberLabel(m) { return regionShort(m) + (m.name ? " (" + m.name + ")" : ""); }
 
-async function fetchCard(sid, name, session) {
-  let url = CONFIG.SHEET_WEBAPP_URL + "?mode=student&studentId=" + encodeURIComponent(sid) + "&name=" + encodeURIComponent(name);
-  if (session) url += "&session=" + encodeURIComponent(session);
+/* 이 기기를 연 학생 본인 카드(포털 로그인 세션은 portal_auth.js가 붙인다) */
+async function fetchMyCard(sid, name) {
+  const url = CONFIG.SHEET_WEBAPP_URL + "?mode=student&studentId=" + encodeURIComponent(sid) + "&name=" + encodeURIComponent(name);
   const json = await (await fetch(url)).json();
-  if (json.result && json.result !== "success") { const e = new Error(json.message || "불러오기 실패"); e.needLogin = !!json.needLogin; throw e; }
+  if (json.result && json.result !== "success") throw new Error(json.message || "불러오기 실패");
   const acts = (json.activities || []).filter(a => a.activityId === CONFIG.GAME_NAMES[2] && a.reflection);
   const last = acts[acts.length - 1];
   return last ? parseCardText(last.reflection, REGIONS, STATS) : null;
 }
 
-async function loginFor(sid, name, pw) {
-  const res = await fetch(CONFIG.SHEET_WEBAPP_URL, { method: "POST", body: JSON.stringify({ action: "login", studentId: sid, name: name, password: pw }) });
-  const json = await res.json();
-  if (json.result !== "success") throw new Error(json.message || "로그인이 안 됐어.");
-  if (json.mustChange) throw new Error("아직 처음 비밀번호야. 포털에서 비밀번호를 먼저 바꿔 줘.");
-  return json.session;
+/* 친구 카드(백엔드 v106 mode=sharedCard — 2차시 카드 글 한 줄만). 기기 주인이면 sharedCard가 없는 옛 백엔드에서도 되게 mode=student로 한 번 더. */
+async function fetchCard(sid, name) {
+  const url = CONFIG.SHEET_WEBAPP_URL + "?mode=sharedCard&activityId=" + encodeURIComponent(CONFIG.GAME_NAMES[2])
+    + "&studentId=" + encodeURIComponent(sid) + "&name=" + encodeURIComponent(name);
+  let json = null;
+  try { json = await (await fetch(url)).json(); } catch (e) { json = null; }
+  if (json && json.result === "success" && "found" in json) return json.found ? parseCardText(json.reflection, REGIONS, STATS) : null;
+  if (sid === S.sid) return fetchMyCard(sid, name);
+  throw new Error("친구 카드를 불러오지 못했어.");
 }
 
 function addMember(m) {
@@ -967,36 +971,32 @@ function renderMembers() {
   const full = S.members.length >= MAX_MEMBERS();
   $("addBox").hidden = full || S.preview;
   $("raidStart").disabled = S.members.length < 2;
-  renderWho3();
 }
 
 async function loadMember() {
-  const sid = val("mSid"), name = val("mName"), pw = $("mPw").value.trim();
+  const sid = val("mSid"), name = val("mName");
   $("mErr").textContent = ""; $("basicBox").hidden = true;
   if (!parseSid(sid)) { $("mErr").textContent = "학번은 숫자 5자리로 써 줘."; return; }
   if (!name) { $("mErr").textContent = "이름을 써 줘."; return; }
   if (S.members.some(x => x.sid === sid)) { $("mErr").textContent = "이미 불러온 학번이야."; return; }
   $("mLoad").disabled = true; $("mLoad").textContent = "불러오는 중…";
-  let session = "", card = null;
+  let card = null;
   try {
-    if (pw) session = await loginFor(sid, name, pw);
-    card = await fetchCard(sid, name, session);
+    card = await fetchCard(sid, name);
   } catch (e) {
-    $("mErr").textContent = e.needLogin && !pw ? "비밀번호를 넣고 다시 눌러 줘." : (e.message || "불러오지 못했어.");
+    $("mErr").textContent = (e.message || "불러오지 못했어.") + " " + PART3.notFound;
     $("mLoad").disabled = false; $("mLoad").textContent = "카드 불러오기";
-    $("mPw").value = "";
-    showBasic(sid, name, session);
+    showBasic(sid, name);
     return;
   }
   $("mLoad").disabled = false; $("mLoad").textContent = "카드 불러오기";
-  $("mPw").value = "";
-  if (!card) { $("mErr").textContent = PART3.notFound; showBasic(sid, name, session); return; }
-  if (addMember({ sid, name, card, basic: false, session })) { $("mSid").value = ""; $("mName").value = ""; }
+  if (!card) { $("mErr").textContent = PART3.notFoundFriend; showBasic(sid, name); return; }
+  if (addMember({ sid, name, card, basic: false })) { $("mSid").value = ""; $("mName").value = ""; }
 }
 
 /* 못 찾은 학생은 지역만 골라 기본 카드(별 3·3·3, «함께 버티기»)로 */
-function showBasic(sid, name, session) {
-  S.basicFor = { sid, name, session };
+function showBasic(sid, name) {
+  S.basicFor = { sid, name };
   S.basicRegion = "";
   $("basicBox").hidden = false;
   radioGroup($("basicPick"), REGIONS, () => S.basicRegion, v => { S.basicRegion = v; });
@@ -1007,15 +1007,15 @@ function joinBasic() {
   if (!b) return;
   if (!S.basicRegion) { $("mErr").textContent = "기본 카드 지역을 골라 줘."; return; }
   const card = { region: S.basicRegion, sym: LOOK[S.basicRegion].syms[0], stats: { lead: { n: 3 }, guard: { n: 3 }, unity: { n: 3 } } };
-  if (addMember({ sid: b.sid, name: b.name, card, basic: true, session: b.session })) {
-    $("basicBox").hidden = true; $("mErr").textContent = ""; $("mSid").value = ""; $("mName").value = ""; $("mPw").value = "";
+  if (addMember({ sid: b.sid, name: b.name, card, basic: true })) {
+    $("basicBox").hidden = true; $("mErr").textContent = ""; $("mSid").value = ""; $("mName").value = "";
   }
 }
 
-/* 포털에서 연 첫 학생은 자동으로(이 기기 세션) */
+/* 이 기기를 연 학생(포털에서 들어오면 학번·이름이 자동)은 자동으로 */
 async function loadFirstMember() {
   if (S.preview) {
-    PREVIEW_REGIONS.forEach((r, i) => S.members.push({ sid: "2051" + (i + 1), name: "미리보기 " + (i + 1), basic: true, session: "",
+    PREVIEW_REGIONS.forEach((r, i) => S.members.push({ sid: "2051" + (i + 1), name: "미리보기 " + (i + 1), basic: true,
       card: { region: r, sym: LOOK[r].syms[0], mvName: "(학생이 붙인 이름)", stats: { lead: { n: 3 }, guard: { n: 3 }, unity: { n: 3 } } } }));
     $("p3Msg").textContent = "미리보기: 학생 기록을 읽지 않고 빈 모양 카드 4장으로 시작해.";
     renderMembers();
@@ -1024,14 +1024,14 @@ async function loadFirstMember() {
   if (S.final || !S.sid) { renderMembers(); return; }
   $("p3Msg").textContent = PART3.loadingMsg;
   try {
-    const card = await fetchCard(S.sid, S.name, "");
-    if (card) { addMember({ sid: S.sid, name: S.name, card, basic: false, session: "" }); $("p3Msg").textContent = ""; return; }
+    const card = await fetchCard(S.sid, S.name);
+    if (card) { addMember({ sid: S.sid, name: S.name, card, basic: false }); $("p3Msg").textContent = ""; return; }
     $("p3Msg").textContent = PART3.notFound;
   } catch (e) {
     $("p3Msg").textContent = (e.message ? e.message + " " : "") + PART3.notFound;
   }
   $("mSid").value = S.sid; $("mName").value = S.name;
-  showBasic(S.sid, S.name, "");
+  showBasic(S.sid, S.name);
   renderMembers();
 }
 
@@ -1182,7 +1182,7 @@ function showRaidEnd() {
   ul.appendChild(el("li", "", PART3.recDown(team.filter(m => m.down).map(regionShort).join(", "))));
   $("endRep").textContent = S.final ? PART3.finalQ : PART3.pickRep; // 최종 보스전은 마무리 질문을 크게
   $("endRep").classList.toggle("final-q", S.final);
-  if (!S.final) $("finalBox").hidden = false;
+  openFinal();
   $("raidRetry").hidden = win;
   $("raidRetry").textContent = PART3.retryBtn;
 }
@@ -1192,32 +1192,22 @@ function retryRaid() {
   startRaid(); // 카드는 그대로, HP·일본 이벤트는 처음부터
 }
 
-/* ── 마무리 제출: 모둠 기기에서 학생마다 한 번씩, 고른 학생 학번으로 ── */
-function renderWho3() {
+/* ── 마무리 제출: 이 기기를 연 학생 학번으로만(서버가 로그인한 본인 학번만 받는다). 친구들은 자기 기기에서 «마무리만 쓰기». ── */
+function openFinal() {
   if (S.final) return;
-  const opts = S.members.filter(m => m.sid).map(m => ({ id: m.sid, name: m.name + (S.doneSids.indexOf(m.sid) >= 0 ? " ✓ 제출함" : "") }));
-  if (opts.every(o => o.id !== S.who3)) S.who3 = "";
-  radioGroup3($("who3"), opts);
+  $("finalBox").hidden = false;
+  $("who3Q").textContent = PART3.who3(S.name, S.sid);
 }
 
-function radioGroup3(box, opts) {
-  box.innerHTML = "";
-  box.setAttribute("role", "radiogroup");
-  opts.forEach(o => {
-    box.appendChild(choiceRow(o.name, S.who3 === o.id, row => {
-      S.who3 = o.id;
-      box.querySelectorAll("[role=radio]").forEach(r => r.setAttribute("aria-checked", r === row ? "true" : "false"));
-      $("p3Err").textContent = "";
-    }));
-  });
-  if (!opts.length) box.appendChild(el("p", "note", "카드를 불러온 친구가 여기 나와."));
+function finalOnly() {
+  openFinal();
+  $("finalBox").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function submitPart3() {
   if (S.sending) return;
-  const m = S.members.find(x => x.sid === S.who3);
-  if (!m) { $("p3Err").textContent = "제출할 사람을 골라 줘."; return; }
-  if (S.doneSids.indexOf(m.sid) >= 0) { $("p3Err").textContent = m.name + "은(는) 이미 제출했어."; return; }
+  if (S.submitted) return;
+  const m = S.members.find(x => x.sid === S.sid) || { sid: S.sid, name: S.name, basic: true, card: { region: "" } };
   const t = val("t3");
   if (t.length < 5 && !skip()) { $("p3Err").textContent = "한두 문장 써 줘."; return; }
   if (t.length < PART3.finalMin && !skip() && !confirm("아직 " + t.length + "자야. 그래도 제출할까?")) return;
@@ -1227,27 +1217,25 @@ async function submitPart3() {
   const result = st && st.over ? (st.over === "win" ? "레이드 승리" : "레이드 패배") : "레이드 전";
   const payload = {
     studentId: m.sid, studentName: m.name, gameName: CONFIG.GAME_NAME,
-    choiceSummary: regionName(m.card.region) + " 카드 · " + result + " · 모둠 " + S.members.length + "명",
+    choiceSummary: (m.card.region ? regionName(m.card.region) + " 카드 · " : "") + result + " · 모둠 " + S.members.length + "명",
     diffSummary: "",
     reflection: t, // 시트 G열: 마무리 질문 답
     choicesJson: JSON.stringify({ sid: m.sid, name: m.name, ban: (parseSid(m.sid) || {}).ban || 0, region: m.card.region, basic: m.basic, result: result,
       group: S.members.map(x => x.sid).filter(Boolean), writing: t, ts: new Date().toISOString() })
   };
-  if (m.session) payload.session = m.session; // 친구는 그 친구 세션으로(없으면 portal_auth가 이 기기 세션을 붙인다)
-  if (m.sid === S.sid) Object.assign(payload, FocusGuard.payload()); // 작성 과정 신호는 이 기기를 연 학생 것이라 그 학생 제출에만
+  Object.assign(payload, FocusGuard.payload());
   try {
     await postToSheet(payload);
   } catch (e) {
-    $("p3Err").textContent = e.locked ? e.message : (/로그인/.test(e.message || "") ? m.name + ": " + e.message + " (카드 불러오기에서 비밀번호를 넣고 다시 불러와 줘)" : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘.");
+    $("p3Err").textContent = e.locked || /로그인/.test(e.message || "") ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘.";
     S.sending = false; $("p3Submit").disabled = false; $("p3Submit").textContent = PART3.submitBtn;
     return;
   }
-  S.sending = false; S.doneSids.push(m.sid);
-  $("t3").value = ""; $("t3c").textContent = "0자";
-  $("p3Submit").disabled = false; $("p3Submit").textContent = PART3.submitBtn;
-  $("p3Out").textContent = S.preview ? "미리보기라 저장하지 않았어." : m.name + " 제출했어! 다음 사람을 골라.";
-  S.who3 = "";
-  renderWho3();
+  S.sending = false; S.submitted = true;
+  if (!S.preview && window.DraftGuard) DraftGuard.clear();
+  $("t3").readOnly = true;
+  $("p3Submit").textContent = "제출 완료";
+  $("p3Out").textContent = S.preview ? "미리보기라 저장하지 않았어." : PART3.doneMsg;
 }
 
 /* ── 부팅 (모든 함수 선언 뒤, 파일 맨 마지막) ── */
@@ -1302,7 +1290,6 @@ function init() {
 
   $("setupTitle").textContent = S.final ? PART3.finalSetupTitle : PART3.setupTitle;
   $("setupNote").textContent = S.final ? PART3.finalSetupNote : PART3.setupNote;
-  $("mPwNote").textContent = PART3.pwNote;
   $("basicNote").textContent = PART3.basicNote;
   $("rulesTitle").textContent = PART3.rulesTitle;
   PART3.rules.forEach(r => $("rulesList").appendChild(el("li", "", r)));
@@ -1310,7 +1297,8 @@ function init() {
   $("jpQ").textContent = PART3.jpQ;
   $("jpGo").textContent = PART3.jpGo;
   $("finalBox").hidden = true; // 모둠 레이드가 끝나면 연다(전자칠판은 저장 없음)
-  $("who3Q").textContent = PART3.who3Q;
+  $("finalOnly").textContent = PART3.finalOnlyBtn;
+  $("finalOnly").hidden = S.final;
   $("finalTitle").textContent = PART3.finalTitle;
   $("finalQ").textContent = PART3.finalQ;
   $("finalHint").textContent = PART3.finalHint;
@@ -1340,6 +1328,7 @@ function init() {
   $("mLoad").addEventListener("click", loadMember);
   $("basicJoin").addEventListener("click", joinBasic);
   $("raidStart").addEventListener("click", startRaid);
+  $("finalOnly").addEventListener("click", finalOnly);
   $("msgBox").addEventListener("click", nextMsg);
   $("jpGo").addEventListener("click", closeJpModal);
   $("raidRetry").addEventListener("click", retryRaid);
