@@ -126,7 +126,8 @@ function startApp() {
   load();
   if (S.part === 1) {
     renderBoard();
-    if (S.done1 || skip()) showDone1(); // 미리보기는 분류판을 다 맞추지 않아도 아래 정리·제출 칸을 함께 연다
+    if (S.done1) showDone1();
+    $("boardSkip").hidden = !skip() || S.done1; // 미리보기는 분류판을 먼저 보여 주고, 다 맞추지 않아도 버튼으로 다음(정리·제출)으로 간다
     show("p1");
     setTimeout(() => { $("t1c").textContent = val("t1").length + "자"; }, 700);
   } else {
@@ -336,6 +337,7 @@ function renderSumList(box) {
 function showDone1() {
   $("boardMsg").textContent = "";
   $("boardCheck").hidden = S.done1;
+  $("boardSkip").hidden = true;
   renderSumList($("sumList"));
   $("p1Done").hidden = false;
   renderP1Submit();
@@ -586,6 +588,7 @@ function init() {
     e.preventDefault(); boardClick(e);
   }));
   $("boardCheck").addEventListener("click", checkBoardNow);
+  $("boardSkip").addEventListener("click", () => { showDone1(); $("p1Done").scrollIntoView({ behavior: "smooth", block: "start" }); });
   $("t1").addEventListener("input", () => { $("t1c").textContent = val("t1").length + "자"; $("p1Err").textContent = ""; });
   $("p1Submit").addEventListener("click", submitPart1);
   W_IDS.concat(["pg1", "pg2", "pg3"]).forEach(id => $(id).addEventListener("input", () => { $("p2Err").textContent = ""; refreshCounts(); }));
