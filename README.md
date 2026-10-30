@@ -4,4 +4,5 @@
 
 - 1차시 단서 카드 분류·순위 매기기: https://hyonnie-t.github.io/nation-building/
 - 2차시 개혁 캐릭터 카드 만들기: https://hyonnie-t.github.io/nation-building/?part=2
-- 3차시 카드 대결: https://hyonnie-t.github.io/nation-building/?part=3
+- 3차시 열강 보스 레이드: https://hyonnie-t.github.io/nation-building/?part=3
+- 3차시 전자칠판 최종 보스전: https://hyonnie-t.github.io/nation-building/?part=3&final=1
