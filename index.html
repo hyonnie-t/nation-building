@@ -208,16 +208,20 @@
     </div>
 
     <div id="raidArena" class="arena" hidden>
-      <div class="boss-zone">
+      <div class="field">
         <div id="bossSide" class="boss-side"></div>
-        <div class="boss-info">
-          <div class="bi-head"><b id="bossName"></b><span id="bossHp" class="hp-num"></span></div>
+        <div class="boss-ui pbox">
+          <div class="bi-head"><b id="bossName"></b><span id="bossHearts" aria-hidden="true"></span></div>
           <div class="hpbar boss"><i id="bossBar"></i></div>
+          <span id="bossHp" class="hp-num"></span>
         </div>
+        <div id="teamZone" class="team-zone"></div>
+        <div id="turnBox" class="turn-ui pbox"></div>
       </div>
-      <button id="msgBox" class="msg-box" type="button" aria-live="polite"></button>
-      <div id="skillBox" class="skill-box"></div>
-      <div id="teamZone" class="team-zone"></div>
+      <div class="dialog">
+        <button id="msgBox" class="msg-box" type="button" aria-live="polite"></button>
+        <div id="skillBox" class="skill-box"></div>
+      </div>
     </div>
 
     <div id="raidEnd" class="card end-card" hidden>
@@ -241,6 +245,9 @@
     </div>
   </section>
 </main>
+<div id="rulesModal" class="modal rules-modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle2" hidden>
+  <div class="modal-card"><h2 id="rulesTitle2"></h2><ol id="rulesList2" class="rules-list"></ol><button id="rulesClose" class="btn wide" type="button"></button></div>
+</div>
 <div id="jpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="jpQ" hidden>
   <div class="modal-card">
     <p id="jpQ" class="lead"></p>
