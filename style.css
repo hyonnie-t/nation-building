@@ -371,3 +371,23 @@ body.eboard .f-info .hp-num{font-size:18px}
 @media (max-width:1839px){ /* 1920 전자칠판이 아닌 화면에서 최종 보스전을 열었을 때 차례 상자가 모둠 8명 줄과 겹치지 않게 */
   body.eboard .turn-ui{bottom:auto;top:14px;right:auto;left:450px;width:300px;font-size:18px}
 }
+
+/* ══ 3부 단서 퀴즈 창(2026-10-30) ══ 수학몬의 크림색 문제 상자 */
+.quiz-card{font-family:var(--pixel);border-radius:0;border:3px solid var(--pline);box-shadow:4px 4px 0 rgba(0,0,0,.35);background:#fffbe8;max-width:640px;max-height:calc(100vh - 32px);overflow:auto;padding:18px 20px;color:var(--pline)}
+.quiz-choices .btn:disabled{opacity:.6}
+.quiz-head{display:flex;justify-content:space-between;align-items:baseline;font-size:18px}
+.quiz-timer{color:#b0302a;font-size:18px}
+.quiz-bar{height:10px;border:2px solid var(--pline);background:#ddd;margin:6px 0 12px}
+.quiz-bar i{display:block;height:100%;width:100%;background:#e8513f;transition:width 1s linear}
+.quiz-q{margin:0 0 6px;font:700 20px/1.4 var(--pixel);color:#b0302a}
+.quiz-text{margin:0 0 12px;padding:10px 12px;background:#fff;border:2px solid var(--pline);font:17px/1.6 var(--sans);color:var(--ink)}
+.quiz-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quiz-choices .btn{margin:0;min-height:56px;font:18px var(--pixel);word-break:keep-all;background:#fff;color:var(--pline);border:3px solid var(--pline);border-radius:0;box-shadow:3px 3px 0 rgba(0,0,0,.35)}
+.quiz-choices .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(0,0,0,.35)}
+.quiz-skill{margin:10px 0 0;font:14px var(--pixel);color:#555}
+@media (prefers-reduced-motion:reduce){.quiz-bar i{transition:none}}
+body.eboard .quiz-card{max-width:960px}
+body.eboard .quiz-q{font-size:30px}
+body.eboard .quiz-text{font-size:24px}
+body.eboard .quiz-choices .btn{min-height:76px;font-size:26px}
+body.eboard .quiz-timer,body.eboard .quiz-head{font-size:26px}

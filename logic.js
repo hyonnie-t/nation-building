@@ -180,13 +180,15 @@ function startRound(st) { st.queue = teamIdx(st); st.qi = 0; }
 function currentActor(st) { return st.qi < st.queue.length ? st.queue[st.qi] : -1; }
 function canSpecial(m) { return m.cd === 0; }
 
-function act(st, skill, rng) {
+/* power: 단서 퀴즈 결과 배율(맞히면 1, 틀리면 RAID.quizWrongMul). 없으면 1. */
+function act(st, skill, rng, power) {
   const i = currentActor(st);
   if (i < 0 || st.over) return [];
   const m = st.members[i];
   const ev = [];
+  const pw = x => Math.max(0, Math.round(x * (power == null ? 1 : power)));
   if (skill === "special" && canSpecial(m)) {
-    const dmg = m.lead * RAID.specialPerLead + dice(rng) + st.fallen * RAID.fallenBonus;
+    const dmg = pw(m.lead * RAID.specialPerLead + dice(rng) + st.fallen * RAID.fallenBonus);
     st.boss.hp = Math.max(0, st.boss.hp - dmg);
     m.cd = 1; // 다음 내 차례 한 번은 못 쓴다
     ev.push({ t: "special", who: i, dmg: dmg });
@@ -195,12 +197,12 @@ function act(st, skill, rng) {
     let low = team[0];
     team.forEach(j => { if (st.members[j].hp < st.members[low].hp) low = j; });
     const t = st.members[low];
-    const amt = Math.min(t.max - t.hp, m.unity * RAID.healPerUnity);
+    const amt = Math.min(t.max - t.hp, pw(m.unity * RAID.healPerUnity));
     t.hp += amt;
     m.cd = 0;
     ev.push({ t: "heal", who: i, to: low, amt: amt });
   } else {
-    const amt = m.guard * RAID.guardPerStat;
+    const amt = pw(m.guard * RAID.guardPerStat);
     st.shield = RAID.shieldStack ? st.shield + amt : Math.max(st.shield, amt);
     m.cd = 0;
     ev.push({ t: "guard", who: i, amt: amt });
@@ -208,6 +210,33 @@ function act(st, skill, rng) {
   if (st.boss.hp <= 0) { st.over = "win"; ev.push({ t: "win" }); return ev; }
   st.qi++;
   return ev;
+}
+
+/* 3부 단서 퀴즈(2026-10-30, 수학몬식 «문제를 맞혀야 공격»): 1부 단서 카드 한 장을 내고 지역(4지선다) 또는 칸(당한 일·대응·결과·한계, 3지선다)을 묻는다.
+ * used: 이미 낸 카드 id 배열(다 쓰면 비운다). 새 문장을 만들지 않고 카드 문장(교과서 한 줄)만 쓴다. */
+function makeQuiz(cards, regions, cols, rng, used, kind) {
+  used = used || [];
+  let pool = cards.filter(k => !used.includes(k.id));
+  if (!pool.length) { used.length = 0; pool = cards.slice(); }
+  const card = pool[Math.floor(rng() * pool.length)];
+  used.push(card.id);
+  const rname = (regions.find(r => r.id === card.r) || {}).name || "";
+  // 카드 문장에 지역 이름이 그대로 있으면(예: «인도 국민 회의») 지역 문제는 글자 찾기가 되므로 칸 문제만 낸다(한 글자 이름 «청»은 «청년»에 걸리므로 제외)
+  if (!kind && rname.length >= 2 && card.t.includes(rname)) kind = "col";
+  kind = kind || (rng() < 0.6 ? "region" : "col");
+  let choices, answer;
+  if (kind === "region") {
+    const others = regions.filter(r => r.id !== card.r).map(r => r.id);
+    const pick = [];
+    while (pick.length < 3 && others.length) pick.push(others.splice(Math.floor(rng() * others.length), 1)[0]);
+    choices = [card.r].concat(pick).map(id => ({ id: id, name: regions.find(r => r.id === id).name }));
+    answer = card.r;
+  } else {
+    choices = cols.map(c => ({ id: c.id, name: c.name }));
+    answer = card.c;
+  }
+  for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const tmp = choices[i]; choices[i] = choices[j]; choices[j] = tmp; }
+  return { id: card.id, text: card.t, page: card.p, kind: kind, choices: choices, answer: answer, answerName: choices.find(c => c.id === answer).name };
 }
 
 /* 보스 차례. choice: 일본 카드 주인이 고른 공격("random" | "weak"), 없으면 확률로 약점 공격. */
@@ -312,4 +341,4 @@ function spritePal(id, foe) {
 }
 
 if (typeof module !== "undefined") module.exports = { TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
-  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
+  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };

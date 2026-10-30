@@ -130,6 +130,8 @@ const RAID = {
   bossHitsPer: 1,          // 보스 한 차례에 살아 있는 카드 몇 장당 1장을 치나(1이면 모두 친다)
   noJapanHp: 30, noJapanAtk: 3,
   textMax: 30,
+  quizWrongMul: 0.6,       // 단서 퀴즈를 틀리면 그 기술의 위력 배율(맞히면 1)
+  quizSeconds: 10,         // 퀴즈 제한 시간(초)
   basicMove: "함께 버티기",
   /* 보스 HP = 인원 × (bossHpPer + (인원 − base) × grow). 인원이 많을수록 운이 고르게 나와 쉬워지는 것을 grow로 맞춘다. */
   group: { bossHpPer: 44, bossAtk: 4, base: 2, grow: 7 },
@@ -222,6 +224,7 @@ const PART3 = {
     "필살기: 개혁 추진력만큼 세게 공격해. 쓰고 나면 다음 내 차례 한 번은 쉬어.",
     "막아서기: 이번 열강 차례에 모둠이 받는 피해를 외세 방어력만큼 줄여.",
     "힘 보태기: HP가 가장 낮은 친구를 안의 단결력만큼 회복해.",
+    "기술을 고르면 단서 퀴즈가 " + RAID.quizSeconds + "초 떠. 맞히면 풀 위력, 틀리면 위력 " + Math.round(RAID.quizWrongMul * 100) + "%야(답과 교과서 쪽수를 알려 줘).",
     "열강의 HP를 0으로 만들면 이겨. 모두 쓰러지면 져."
   ],
   bossName: "열강",
@@ -242,6 +245,13 @@ const PART3 = {
   moveInfo: (mv, lead, per) => "필살기 «" + mv + "» — 개혁 추진력 ★" + lead + " × " + per + " + 주사위",
   turnStat: (fallen, turns) => "쓰러진 카드 " + fallen + " · 열강 차례 " + turns + "회",
   rulesBtn: "📖 규칙",
+  quizTitle: "단서 퀴즈",
+  quizRegionQ: "이 단서는 어느 지역의 이야기일까?",
+  quizColQ: "이 단서는 «당한 일 · 대응 · 결과·한계» 가운데 어느 칸일까?",
+  quizTimer: s => "⏱ " + s + "초",
+  quizFor: label => "맞히면 " + label + "을(를) 풀 위력으로, 틀리면 위력 " + Math.round(RAID.quizWrongMul * 100) + "%로 쓴다.",
+  quizOk: "정답! 풀 위력으로 간다.",
+  quizNo: (name, page, pct, timeout) => (timeout ? "시간 초과. " : "아쉽다. ") + "답은 «" + name + "» — 교과서 " + page + "쪽을 펴 봐. 이번 기술은 위력 " + pct + "%.",
   closeBtn: "닫기",
   msgSpecial: (r, mv, d) => r + "의 «" + mv + "»! 열강에게 " + d + "의 피해!",
   msgGuard: (r, a) => r + "의 막아서기! 이번 열강 차례에 받는 피해를 " + a + "만큼 줄인다.",
