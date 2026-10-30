@@ -14,7 +14,7 @@ const S = {
   part: 1, sid: "", name: "", grade: 0, ban: 0, preview: false,
   placed: {}, cur: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
-  final: false, members: [], raid: null, msgs: [], modalOpen: false, basicFor: null, basicRegion: "", raidDone: false,
+  final: false, members: [], raid: null, msgs: [], modalOpen: false, quiz: null, quizUsed: [], basicFor: null, basicRegion: "", raidDone: false,
   copied: false, sending: false, submitted: false, padletUrl: "", padletLoading: false
 };
 const SAVE_KEYS = { 1: ["placed", "cur", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
@@ -1113,6 +1113,8 @@ function startRaid() {
   const ms = S.members.map(m => raidMember(m.card, m, m.basic));
   S.raid = newRaid(ms, S.final ? "final" : "group");
   S.msgs = []; S.modalOpen = false;
+  if (S.quiz) clearInterval(S.quiz.timer);
+  S.quiz = null;
   console.log("[raid] start", S.raid.mode, ms.map(m => m.region).join(","), "boss HP", S.raid.boss.max);
   $("raidSetup").hidden = true; $("raidEnd").hidden = true; $("raidArena").hidden = false;
   renderArena();
@@ -1134,6 +1136,7 @@ function pushEvents(evs) {
     else if (e.t === "jpSwitch") { S.msgs.push(PART3.jpSwitch(mem(e.who).name || "모둠")); console.log("[raid] japan card switches", mem(e.who).name, "+HP", e.hp); }
     else if (e.t === "jpAlly") { S.msgs.push(PART3.jpAlly); console.log("[raid] japan joins boss (no japan card)"); }
     else if (e.t === "jpQ") S.msgs.push({ modal: true });
+    else if (e.t === "quiz") S.msgs.push(e.ok ? PART3.quizOk : PART3.quizNo(e.name, e.page, Math.round(RAID.quizWrongMul * 100), e.timeout));
     else if (e.t === "win" || e.t === "lose") console.log("[raid]", e.t, "boss turns", st.bossTurns);
   });
 }
@@ -1160,7 +1163,48 @@ function closeJpModal() {
 
 function doSkill(skill) {
   if (S.msgs.length || S.modalOpen || !S.raid || S.raid.over) return;
-  pushEvents(act(S.raid, skill, Math.random));
+  openQuiz(skill);
+}
+
+/* ── 단서 퀴즈(수학몬식): 기술을 고르면 10초 퀴즈 → 맞히면 풀 위력, 틀리면 RAID.quizWrongMul ── */
+function skillLabel(skill) {
+  const m = S.raid.members[currentActor(S.raid)];
+  return skill === "special" ? PART3.skillSpecial(m.mvName) : skill === "heal" ? PART3.skillHeal : PART3.skillGuard;
+}
+function openQuiz(skill) {
+  const q = makeQuiz(CARDS, REGIONS, COLS, Math.random, S.quizUsed);
+  S.quiz = { skill: skill, q: q, left: RAID.quizSeconds, timer: 0 };
+  S.modalOpen = true;
+  $("quizQ").textContent = q.kind === "region" ? PART3.quizRegionQ : PART3.quizColQ;
+  $("quizText").textContent = q.text;
+  const box = $("quizChoices");
+  box.innerHTML = "";
+  q.choices.forEach(c => { const b = el("button", "btn quiz-choice", c.name); b.type = "button"; b.disabled = true; b.addEventListener("click", () => answerQuiz(c.id)); box.appendChild(b); });
+  setTimeout(() => { if (S.quiz && S.quiz.q === q) box.querySelectorAll("button").forEach(b => { b.disabled = false; }); const first = box.querySelector("button"); if (first && S.quiz) first.focus(); }, 450); // 기술 버튼을 두 번 누른 손가락이 보기를 누르지 않게
+  $("quizSkill").textContent = PART3.quizFor(skillLabel(skill));
+  $("quizModal").hidden = false;
+  S.quiz.timer = setInterval(tickQuiz, 1000);
+  tickQuiz();
+}
+function tickQuiz() {
+  const z = S.quiz;
+  if (!z) return;
+  $("quizTimer").textContent = PART3.quizTimer(z.left);
+  $("quizBar").style.width = (z.left / RAID.quizSeconds * 100) + "%";
+  if (z.left <= 0) { answerQuiz(null); return; }
+  z.left--;
+}
+function answerQuiz(choice) {
+  const z = S.quiz;
+  if (!z) return;
+  clearInterval(z.timer);
+  S.quiz = null;
+  $("quizModal").hidden = true;
+  S.modalOpen = false;
+  const ok = choice === z.q.answer;
+  const power = ok ? 1 : RAID.quizWrongMul;
+  console.log("[raid] quiz", z.q.id, z.q.kind, ok ? "ok" : "miss", "power", power);
+  pushEvents([{ t: "quiz", ok: ok, name: z.q.answerName, page: z.q.page, timeout: choice === null }].concat(act(S.raid, z.skill, Math.random, power)));
   renderArena();
 }
 
@@ -1386,7 +1430,7 @@ function init() {
   $("basicNote").textContent = PART3.basicNote;
   $("rulesTitle").textContent = PART3.rulesTitle;
   PART3.rules.forEach(r => { $("rulesList").appendChild(el("li", "", r)); $("rulesList2").appendChild(el("li", "", r)); });
-  $("rulesTitle2").textContent = PART3.rulesTitle; $("rulesClose").textContent = PART3.closeBtn;
+  $("rulesTitle2").textContent = PART3.rulesTitle; $("rulesClose").textContent = PART3.closeBtn; $("quizTitle").textContent = PART3.quizTitle;
   $("raidStart").textContent = PART3.startBtn;
   $("jpQ").textContent = PART3.jpQ;
   $("jpGo").textContent = PART3.jpGo;

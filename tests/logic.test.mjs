@@ -256,4 +256,41 @@ t("시뮬레이션: 모둠 60~80%, 최종 50~70%, 일본 포함이 10%p 넘게 �
   });
 });
 
+t("단서 퀴즈: 보기에 정답이 있고 겹치지 않으며, 21장을 다 내면 다시 처음부터", () => {
+  const rng = L.seeded(7);
+  const used = [];
+  const seen = new Set();
+  for (let i = 0; i < CARDS.length; i++) {
+    const q = L.makeQuiz(CARDS, REGIONS, COLS, rng, used);
+    assert.ok(q.text && q.page, J(q));
+    assert.ok(q.choices.some(c => c.id === q.answer), J(q));
+    assert.equal(new Set(q.choices.map(c => c.id)).size, q.choices.length, J(q));
+    assert.equal(q.choices.length, q.kind === "region" ? 4 : 3, J(q));
+    assert.equal(q.answerName, q.choices.find(c => c.id === q.answer).name);
+    const card = CARDS.find(k => k.id === q.id);
+    assert.equal(q.answer, q.kind === "region" ? card.r : card.c);
+    seen.add(q.id);
+  }
+  assert.equal(seen.size, CARDS.length);
+  const again = L.makeQuiz(CARDS, REGIONS, COLS, rng, used);
+  assert.ok(again.id && used.length === 1, "다 쓰면 비우고 다시 낸다");
+  const col = L.makeQuiz(CARDS, REGIONS, COLS, rng, [], "col");
+  assert.equal(col.kind, "col"); assert.equal(col.choices.length, 3);
+});
+
+t("퀴즈 위력 배율: power 0.6이면 필살기·막아서기·힘 보태기가 반올림한 60%", () => {
+  const mk = region => L.raidMember({ region, mvName: "m", stats: { lead: { n: 5 }, guard: { n: 3 }, unity: { n: 4 } } }, { sid: "1", name: "a" }, false);
+  const full = L.newRaid([mk("qing"), mk("iran")], "group");
+  const half = L.newRaid([mk("qing"), mk("iran")], "group");
+  const one = () => 0; // 주사위 1
+  const e1 = L.act(full, "special", one)[0], e2 = L.act(half, "special", one, 0.6)[0];
+  assert.equal(e1.dmg, 5 * ctx.RAID.specialPerLead + 1);
+  assert.equal(e2.dmg, Math.round(e1.dmg * 0.6));
+  const g1 = L.act(full, "guard", one)[0], g2 = L.act(half, "guard", one, 0.6)[0];
+  assert.equal(g2.amt, Math.round(g1.amt * 0.6));
+  full.members[0].hp = 10; half.members[0].hp = 10; full.qi = 0; half.qi = 0;
+  const h1 = L.act(full, "heal", one)[0], h2 = L.act(half, "heal", one, 0.6)[0];
+  assert.equal(h1.amt, 16); assert.equal(h2.amt, Math.round(16 * 0.6));
+});
+
 console.log(n + " passed");
