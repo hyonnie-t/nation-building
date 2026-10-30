@@ -181,33 +181,6 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 
 /* ══ 역사 카드(포켓몬 카드처럼: 굵은 색 테두리·HP·그림 칸·기술 칸·아래 설명) ══ */
 .card-stage{display:flex;justify-content:center;padding:6px 0}
-.hcard{--c1:#6d6f86;--c2:#e1e2ea;width:100%;max-width:400px;border:12px solid var(--c1);border-radius:22px;background:linear-gradient(180deg,var(--c2),#fff 70%);padding:12px 14px 10px;font-family:var(--sans);color:#1f1f2e;box-shadow:0 6px 18px rgba(34,35,58,.25)}
-.hc-top{display:flex;justify-content:space-between;align-items:flex-end}
-.hc-name small{display:block;font:700 12px var(--sans);color:#555870;letter-spacing:.04em}
-.hc-name b{font:900 1.5rem/1.15 var(--sans)}
-.hc-hp{color:#b0302a;text-align:right;white-space:nowrap}
-.hc-hp small{font:700 14px var(--sans);margin-right:3px}
-.hc-hp b{font:900 1.7rem var(--sans)}
-.hc-art{margin-top:8px;height:150px;border:5px solid #c9a43a;border-radius:6px;background:radial-gradient(circle at 50% 50%,#fff,var(--c2));display:flex;align-items:center;justify-content:center}
-.hc-sym{font-size:84px;line-height:1}
-.hc-hit{margin:6px 4px 0;padding:6px 8px;background:rgba(255,255,255,.75);border-radius:4px;font:italic 14px/1.5 var(--sans);color:#3a3b52}
-.hc-move{margin-top:10px}
-.hc-move-head{display:flex;align-items:center;gap:8px}
-.hc-badge{background:var(--c1);color:#fff;font:700 13px var(--sans);padding:2px 10px;border-radius:999px;flex:none}
-.hc-move-head b{font:900 1.15rem var(--sans)}
-.hc-move p{margin:4px 0 0;font:15px/1.55 var(--sans)}
-.hc-stats{margin-top:10px;border-top:2px solid rgba(0,0,0,.12);padding-top:6px}
-.hc-stat{padding:4px 0}
-.hc-stat-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.hc-stat-head b{font:700 15px var(--sans)}
-.hc-stars{color:#c9871a;font-size:20px;letter-spacing:1px}
-.hc-fixed{font:700 12px var(--sans);color:#fff;background:var(--alert);border-radius:4px;padding:1px 6px}
-.hc-stat p{margin:0 0 0 24px;font:14px/1.5 var(--sans);color:#4a4b60}
-.hc-foot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;border-top:2px solid rgba(0,0,0,.12);padding-top:6px}
-.hc-foot b{font:700 14px var(--sans)}
-.hc-foot p{margin:2px 0 0;font:13px/1.5 var(--sans);color:#4a4b60}
-.hc-flavor{margin:8px 0 0;padding:6px 8px;background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.08);border-radius:4px;font:italic 13px/1.5 var(--sans);color:#3a3b52}
-.hc-owner{margin:6px 0 0;font:12px var(--sans);color:#555870;text-align:right}
 .saved-box{margin-top:12px;text-align:center}
 .saved-box img{max-width:280px;width:100%;border-radius:12px;box-shadow:0 2px 8px rgba(34,35,58,.2)}
 
@@ -220,10 +193,8 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .sprite{position:relative;display:inline-block;width:88px;height:88px;flex:none}
 .sprite canvas{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .sprite-sym{position:absolute;right:-6px;top:-10px;font-size:28px;line-height:1}
-.hc-sprite{width:128px;height:128px}
-.hc-sprite .sprite-sym{font-size:36px;right:-14px}
 
-/* ══ 3부: 열강 보스 레이드 ══ 보스 쪽은 차갑고 무거운 회청색, 모둠 쪽은 기존 책 지면 */
+/* ══ 3부: 모둠원 불러오기 ══ */
 .member-list{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
 .member{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:#fff}
 .member .sprite{width:56px;height:56px}
@@ -237,38 +208,6 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .add-grid label{margin-top:8px}
 .basic-box{margin-top:10px}
 .rules{margin-top:14px}
-.arena{margin-bottom:16px}
-.boss-zone{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:6px;background:linear-gradient(180deg,#2c3446,#3d4659);color:#eef1f6}
-.boss-side{display:flex;align-items:flex-end;gap:6px;flex:none}
-.boss-sprite{width:112px;height:112px}
-.ally-sprite{width:64px;height:64px}
-.boss-info{flex:1;min-width:0}
-.bi-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:700 20px var(--sans)}
-.boss-zone .hp-num{color:#d5dbe6}
-.hpbar{height:14px;border-radius:7px;background:#d9dbe4;overflow:hidden;margin-top:6px}
-.hpbar i{display:block;height:100%;background:var(--jade);transition:width .4s}
-.hpbar i.low{background:var(--alert)}
-.hpbar.boss{background:#1b2130;height:18px;border-radius:9px}
-.hpbar.boss i{background:#e04848}
-.hp-num{font:500 16px var(--sans);color:var(--muted)}
-.msg-box{display:block;width:100%;min-height:76px;margin:12px 0;padding:14px 18px;border:3px solid var(--indigo-deep);border-radius:8px;background:#fff;text-align:left;font:700 19px/1.55 var(--sans);color:var(--ink);cursor:pointer}
-.msg-box:disabled{cursor:default;border-color:var(--line)}
-.msg-next{display:block;margin-top:4px;font:500 16px var(--sans);color:var(--saffron-ink);text-align:right}
-.skill-box{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}
-.skill-box .btn{margin-top:0;min-height:56px;font-size:18px}
-.skill-box .btn.sp{background:var(--saffron-ink);border-color:#6e430c}
-.skill-box .btn.foe-btn{background:#3d4659;border-color:#2c3446}
-.ctrl-q{margin:0;font:700 18px var(--sans);color:#3d4659}
-.team-zone{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fighter{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:2px solid var(--line);border-left:6px solid var(--c1);border-radius:6px;background:var(--page);transition:opacity .3s}
-.fighter.cur{border-color:var(--saffron);border-left-color:var(--c1);box-shadow:0 0 0 3px rgba(180,114,26,.25)}
-.fighter.down{opacity:.4;filter:grayscale(.8)}
-.f-info{width:100%;display:flex;flex-direction:column;font:17px/1.35 var(--sans);text-align:center}
-.f-info b{font-size:18px}
-.f-name{color:var(--muted);font-size:17px}
-.f-move{font-size:17px;color:var(--indigo-deep)}
-.end-card h2{font-size:1.6rem}
-.end-record{margin:10px 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(28,34,48,.62);display:flex;align-items:center;justify-content:center;padding:16px}
 .modal[hidden]{display:none}
 .modal-card{max-width:560px;width:100%;background:var(--page);border-radius:8px;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,.3)}
@@ -276,38 +215,20 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 @media (min-width:600px){
   .add-grid{grid-template-columns:1fr 1fr 1fr}
   .member-list{grid-template-columns:1fr 1fr}
-  .skill-box{grid-template-columns:repeat(3,1fr)}
-  .skill-box .ctrl-q{grid-column:1/-1}
 }
 @media (min-width:900px){
-  .team-zone{grid-template-columns:repeat(4,1fr)}
-  .fighter .sprite{width:104px;height:104px}
-  .boss-sprite{width:150px;height:150px}
 }
 @media (max-width:599px){
   .rank-item{grid-template-columns:44px 1fr 44px 44px;gap:6px}
-  .boss-sprite{width:84px;height:84px}
-  .ally-sprite{width:48px;height:48px}
-  .fighter .sprite{width:64px;height:64px}
-  .msg-box{font-size:17px}
 }
 
-/* ══ 전자칠판 최종 보스전(?part=3&final=1) ══ 1920 가로 기준, 본문 22px 이상 */
+/* ══ 전자칠판 최종 보스전(?part=3&final=1) ══ 1920 가로 기준, 본문 22px 이상(전투 화면 크기는 아래 3부 블록 끝에) */
 body.eboard{font-size:22px}
 body.eboard .page{max-width:1840px}
 body.eboard h1{font-size:2.4rem}
 body.eboard h2{font-size:1.9rem}
 body.eboard .note,body.eboard label,body.eboard input,body.eboard .member-info,body.eboard .rules-list,body.eboard .end-record,body.eboard .f-info,body.eboard .hp-num,body.eboard .err{font-size:22px}
 body.eboard .btn{min-height:64px;font-size:24px}
-body.eboard .msg-box{font-size:30px;min-height:110px}
-body.eboard .skill-box .btn{min-height:76px;font-size:26px}
-body.eboard .ctrl-q{font-size:26px}
-body.eboard .bi-head{font-size:30px}
-body.eboard .boss-sprite{width:220px;height:220px}
-body.eboard .ally-sprite{width:110px;height:110px}
-body.eboard .team-zone{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-body.eboard .fighter .sprite{width:120px;height:120px}
-body.eboard .f-info b{font-size:26px}
 body.eboard .member .sprite{width:80px;height:80px}
 body.eboard .modal-card{max-width:900px}
 body.eboard .modal-card .lead{font-size:32px}
@@ -317,3 +238,136 @@ body.eboard .final-q{font-size:32px}
 .opt[aria-disabled="true"],.sym[aria-disabled="true"]{cursor:default;opacity:.7}
 .star:disabled{cursor:default}
 .stars.small .star{min-width:40px;min-height:44px}
+
+/* ══ 2부: 포켓몬 카드 틀(2026-10-30) ══ 황금 테두리 + 지역 색 안쪽 판 + 그림 창(지역 배경) */
+.pk{--c1:#6d6f86;--c2:#e1e2ea;width:100%;max-width:400px;background:#f5c842;border:3px solid #8a6a10;border-radius:16px;padding:12px;box-shadow:6px 6px 0 rgba(34,35,58,.35);color:#1f1f2e;font-family:var(--sans)}
+.pk-in{background:linear-gradient(180deg,var(--c2),#fff8f0 55%,var(--c2));border:2px solid var(--c1);border-radius:8px;padding:8px 10px 6px}
+.pk-top{display:flex;align-items:baseline;gap:8px;padding:0 2px 4px}
+.pk-kind{font:700 12px var(--sans);color:#555;flex:none}
+.pk-name{font:900 1.35rem/1.15 var(--sans);flex:1 1 auto;min-width:0}
+.pk-hp{color:#b0302a;white-space:nowrap}
+.pk-hp small{font:700 12px var(--sans);margin-right:2px}
+.pk-hp b{font:900 1.3rem var(--sans)}
+.pk-type{width:24px;height:24px;border-radius:50%;background:var(--c1);display:inline-grid;place-items:center;font-size:14px;color:#fff;border:2px solid #fff;box-shadow:0 0 0 1px #8a6a10;flex:none;align-self:center}
+.pk-art{position:relative;height:190px;border:5px solid #c9a227;border-radius:3px;box-shadow:inset 0 0 0 1px #8a6a10;background:var(--c2) center/cover no-repeat;image-rendering:pixelated;image-rendering:crisp-edges;display:flex;align-items:flex-end;justify-content:center}
+.pk-sprite{width:120px;height:120px;margin-bottom:6px;filter:drop-shadow(2px 2px 0 rgba(0,0,0,.35))}
+.pk-qmark{font-size:84px;line-height:1;align-self:center}
+.pk-species{margin:6px 0;font:italic 13px/1.4 var(--sans);text-align:center;background:#fff;border:1px solid #c9a227;border-radius:999px;padding:3px 10px;color:#3a3b52}
+.pk-atk{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid #c9a227}
+.pk-cost{display:flex;gap:2px;flex-wrap:wrap;max-width:60px}
+.pk-cost i{width:14px;height:14px;border-radius:50%;background:var(--c1);display:inline-block;border:1px solid #333}
+.pk-cost i.empty{background:#ddd}
+.pk-atk-name b{display:block;font:900 16px/1.3 var(--sans)}
+.pk-atk-name small{display:block;font:13px/1.4 var(--sans);color:#333}
+.pk-dmg{font:900 22px var(--sans)}
+.pk-stats{display:flex;justify-content:space-between;gap:6px;padding:6px 2px 2px}
+.pk-stat b{display:block;font:500 12px var(--sans);color:#555}
+.pk-blocks{letter-spacing:1px;color:#a0741a;font-size:14px}
+.pk-blocks span{color:#9a9a9a}
+.pk-why{margin:0 2px 2px;font:13px/1.4 var(--sans);color:#4a4b60;border-bottom:1px solid #c9a227;padding-bottom:5px}
+.pk-stats+.pk-weak{border-top:1px solid #c9a227}
+.pk-weak{display:grid;grid-template-columns:1fr 1fr;gap:6px;font:13px/1.4 var(--sans);padding:6px 2px 2px;color:#2b2b33}
+.pk-weak b{display:block;font:500 12px var(--sans);color:#555}
+.pk-flavor{margin:6px 0 0;font:italic 12px/1.4 var(--sans);color:#333;border:1px solid #c9a227;background:#fffdf5;padding:5px 8px;border-radius:3px}
+.pk-foot{display:flex;justify-content:space-between;font:12px var(--sans);color:#555;margin-top:4px;padding:0 2px}
+.pk .stars.small{margin-top:2px}
+
+/* ══ 3부: 전투 화면(2026-10-30 수학몬 포맷) ══ 19세기 항구 배경, 픽셀 글꼴, 모서리 0·먹색 테두리·흐림 없는 그림자 */
+@font-face{font-family:"NeoDunggeunmo";src:url("fonts/NeoDunggeunmo.woff") format("woff");font-display:swap}
+:root{--pixel:"NeoDunggeunmo","Noto Sans KR","Malgun Gothic",sans-serif;--pline:#2b2b33}
+.arena{margin-bottom:16px;font-family:var(--pixel)}
+.field{position:relative;height:420px;border:3px solid var(--pline);box-shadow:4px 4px 0 rgba(0,0,0,.35);overflow:hidden;background:#3b2a4a url(img/bg_battle.png) center/cover no-repeat;image-rendering:pixelated;image-rendering:crisp-edges}
+.pbox{background:#fff;border:3px solid var(--pline);border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.35);padding:8px 12px;color:var(--pline)}
+.boss-side{position:absolute;right:28px;top:22px;display:flex;align-items:flex-end;gap:6px}
+.boss-sprite{width:220px;height:220px;animation:boss-breathe 2s steps(2) infinite}
+.ally-sprite{width:96px;height:96px}
+@keyframes boss-breathe{0%{transform:translateY(0)}100%{transform:translateY(-4px)}}
+.boss-ui{position:absolute;left:14px;top:14px;width:290px}
+.bi-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:700 17px var(--pixel)}
+.bi-head span{letter-spacing:2px;color:#e04848}
+.boss-ui .hp-num{display:block;margin-top:3px;font:14px var(--pixel);color:#555}
+.hpbar{height:14px;border-radius:0;background:#ddd;border:2px solid var(--pline);overflow:hidden;margin-top:4px}
+.hpbar i{display:block;height:100%;background:#4caf50;transition:width .4s}
+.hpbar i.low{background:#e04848}
+.hpbar.boss{height:14px;margin-top:4px}
+.hpbar.boss i{background:#4caf50}
+.team-zone{position:absolute;left:14px;bottom:12px;display:flex;gap:8px;align-items:flex-end}
+.fighter{width:104px;display:flex;flex-direction:column;align-items:center;transition:opacity .3s}
+.fighter .sprite{width:80px;height:80px;margin-bottom:4px}
+.fighter.cur .sprite{animation:fighter-bob .9s steps(2) infinite}
+@keyframes fighter-bob{0%{transform:translateY(0)}100%{transform:translateY(-6px)}}
+.fighter.down{opacity:.45;filter:grayscale(.9)}
+.f-info{width:100%;display:flex;flex-direction:column;font:14px/1.3 var(--pixel);text-align:center;word-break:keep-all;background:#fff;border:2px solid var(--pline);padding:2px 4px;color:var(--pline)}
+.fighter.cur .f-info{background:#ffe9a8}
+.f-info b{font-size:14px}
+.f-name{color:#555;font-size:13px}
+.f-info .hpbar{height:8px;margin-top:3px;border-width:2px}
+.f-info .hp-num{font:13px var(--pixel);color:#555}
+.turn-ui{position:absolute;right:14px;bottom:12px;width:250px;font-size:15px}
+.turn-ui b{display:block}
+.turn-ui small{display:block;color:#555;font-size:13px}
+.dialog{margin-top:-3px;border:3px solid var(--pline);background:#fff;box-shadow:4px 4px 0 rgba(0,0,0,.35);display:grid;grid-template-columns:1.2fr 1fr}
+.msg-box{display:block;width:100%;min-height:140px;margin:0;padding:14px 18px;border:0;border-right:3px solid var(--pline);border-radius:0;background:#fff;text-align:left;font:19px/1.5 var(--pixel);color:var(--pline);cursor:pointer}
+.msg-box:disabled{cursor:default}
+.msg-next{display:block;margin-top:6px;font:15px var(--pixel);color:var(--saffron-ink);text-align:right}
+.msg-sub{display:block;margin-top:6px;font:14px var(--pixel);color:#555}
+.skill-box{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;align-content:start}
+.skill-box .btn{margin-top:0;min-height:56px;font:17px var(--pixel);background:#fff;color:var(--pline);border:2px solid var(--pline);border-radius:0;box-shadow:none;padding:8px 6px}
+.skill-box .btn.sp{background:#ffe9a8;border-color:var(--pline)}
+.skill-box .btn.foe-btn{background:#3d4659;color:#fff;border-color:#1c2230}
+.skill-box .btn.dim{color:#666;background:#f3f3f3}
+.skill-box .btn:disabled{opacity:.55}
+.ctrl-q{grid-column:1/-1;margin:0;font:700 16px var(--pixel);color:#3d4659}
+.end-card h2{font-size:1.6rem}
+.end-record{margin:10px 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
+.rules-modal .rules-list{margin:8px 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
+@media (max-width:899px){
+  .field{height:460px}
+  .boss-side{right:12px;top:16px}
+  .boss-sprite{width:170px;height:170px}
+  .ally-sprite{width:64px;height:64px}
+  .turn-ui{right:12px;bottom:auto;top:200px;width:220px}
+  .fighter{width:88px}
+  .fighter .sprite{width:68px;height:68px}
+  .dialog{grid-template-columns:1fr}
+  .msg-box{border-right:0;border-bottom:3px solid var(--pline);min-height:100px}
+}
+@media (max-width:599px){
+  .field{height:400px}
+  .boss-ui{width:224px;left:10px;top:10px;padding:6px 8px}
+  .bi-head{font-size:15px}
+  .bi-head span{letter-spacing:0}
+  .boss-sprite{width:120px;height:120px}
+  .ally-sprite{width:48px;height:48px}
+  .turn-ui{display:none}
+  .team-zone{left:6px;bottom:8px;gap:4px}
+  .fighter{width:76px}
+  .fighter .sprite{width:52px;height:52px}
+  .f-info{font-size:12px}
+  .f-info b{font-size:12px}
+  .msg-box{font-size:17px}
+  .skill-box .btn{font-size:15px}
+}
+/* ══ 전자칠판 최종 보스전(?part=3&final=1) ══ 1920 가로 기준 */
+body.eboard .field{height:640px}
+body.eboard .boss-sprite{width:340px;height:340px}
+body.eboard .ally-sprite{width:120px;height:120px}
+body.eboard .boss-ui{width:420px}
+body.eboard .bi-head{font-size:26px}
+body.eboard .boss-ui .hp-num{font-size:20px}
+body.eboard .team-zone{gap:12px}
+body.eboard .fighter{width:150px}
+body.eboard .fighter .sprite{width:120px;height:120px}
+body.eboard .f-info{font-size:20px}
+body.eboard .f-info b{font-size:20px}
+body.eboard .turn-ui{width:360px;font-size:22px}
+body.eboard .turn-ui small{font-size:18px}
+body.eboard .msg-box{font-size:30px;min-height:170px}
+body.eboard .msg-sub{font-size:20px}
+body.eboard .skill-box .btn{min-height:76px;font-size:26px}
+body.eboard .ctrl-q{font-size:26px}
+body.eboard .f-info .hp-num{font-size:18px}
+@media (prefers-reduced-motion:reduce){.boss-sprite,.fighter.cur .sprite{animation:none}}
+@media (max-width:1839px){ /* 1920 전자칠판이 아닌 화면에서 최종 보스전을 열었을 때 차례 상자가 모둠 8명 줄과 겹치지 않게 */
+  body.eboard .turn-ui{bottom:auto;top:14px;right:auto;left:450px;width:300px;font-size:18px}
+}

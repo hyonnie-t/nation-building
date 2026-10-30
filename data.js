@@ -140,7 +140,9 @@ const RAID = {
  * 16×16 격자를 왼쪽 반(0~8칸, 9글자)만 적고 오른쪽은 거울로 채운다(logic.js spriteRows). marks: [줄, 칸, 글자]는 양쪽에 같이 찍는다.
  * 글자: . 빈칸 / o 테두리 / a 지역 색(LOOK.c1) / b 밝은 색(LOOK.c2) / w 눈 반짝 / k 눈·무늬 / p 볼 / y 금빛 장식.
  * 효니가 직접 그린 그림으로 바꿀 때: img/<지역id>.png(또는 img/boss.png)를 넣고 아래 SPRITE_FILES에 그 id를 적으면 격자 대신 그 그림을 쓴다. */
-const SPRITE_FILES = [];
+const SPRITE_FILES = ["ottoman", "iran", "india", "thai", "qing", "japan", "joseon", "boss"];
+/* 배경: img/bg_<id>.png — battle은 3부 전투 화면, 지역 id는 2부 카드 그림 창 */
+const BG_FILES = ["battle", "ottoman", "iran", "india", "thai", "qing", "japan", "joseon"];
 const SPRITE_BODY = [
   "...oaaaaa", "..oaaaaaa", "..oaakwaa", "..oaakkaa", "..oapaaao", "..oaaaaaa",
   "...oabbbb", "..oaabbbb", "..oaabbbb", "...oaaooo", "....ooo.."
@@ -236,6 +238,11 @@ const PART3 = {
   skillGuard: "🛡️ 막아서기",
   skillHeal: "🤝 힘 보태기",
   tapNext: "▼ 눌러서 다음",
+  ask: r => r + "은(는) 무엇을 할까?",
+  moveInfo: (mv, lead, per) => "필살기 «" + mv + "» — 개혁 추진력 ★" + lead + " × " + per + " + 주사위",
+  turnStat: (fallen, turns) => "쓰러진 카드 " + fallen + " · 열강 차례 " + turns + "회",
+  rulesBtn: "📖 규칙",
+  closeBtn: "닫기",
   msgSpecial: (r, mv, d) => r + "의 «" + mv + "»! 열강에게 " + d + "의 피해!",
   msgGuard: (r, a) => r + "의 막아서기! 이번 열강 차례에 받는 피해를 " + a + "만큼 줄인다.",
   msgHeal: (r, to, a) => r + "의 힘 보태기! " + to + "의 HP가 " + a + " 올랐다.",

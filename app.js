@@ -683,7 +683,8 @@ async function copyOut() {
   $("outMsg").textContent = S.submitted ? "복사했어. 패들렛에 카드 그림과 함께 붙여넣기 해." : "복사했어. 제출 버튼도 꼭 눌러 줘!";
 }
 
-/* ══ 카드 모양(화면용 DOM) ══ 2부 미리보기와 3부 내 카드에 같이 쓴다. opts.edit이면 별을 눌러 고칠 수 있다. */
+/* ══ 카드 모양(화면용 DOM) ══ 포켓몬 카드 틀(2026-10-30): 이름+HP+타입 → 그림 창(지역 배경+도트) → 종 한 줄(당한 일) → 기술(비용 동그라미=개혁 추진력 별, 위력=별×RAID.specialPerLead) → 능력치 3칸 → 약점/라이벌 → 설명문(결과를 가른 것) → 번호.
+ * 2부 미리보기(renderSummary)가 쓴다. opts.edit이면 별을 눌러 고칠 수 있다. 글 형식(G열)은 바꾸지 않는다. */
 function starText(n) { return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); }
 function withPageView(t, p) { t = oneLine(t); const q = cleanPage(p); return t ? t + (q ? " (" + q + "쪽)" : "") : ""; }
 
@@ -691,70 +692,87 @@ function renderCard(box, c, opts) {
   opts = opts || {};
   box.innerHTML = "";
   const look = LOOK[c.region] || { c1: "#6d6f86", c2: "#e1e2ea", syms: ["❔"] };
-  const card = el("div", "hcard");
+  const card = el("div", "pk");
   card.style.setProperty("--c1", look.c1);
   card.style.setProperty("--c2", look.c2);
   const statsNow = {};
   STATS.forEach(d => { statsNow[d.id] = Object.assign({}, c.stats[d.id], opts.edits && opts.edits[d.id] != null ? { n: opts.edits[d.id] } : {}); });
+  const inner = el("div", "pk-in");
 
-  const top = el("div", "hc-top");
-  const nm = el("div", "hc-name");
-  nm.appendChild(el("small", "", "개혁 카드"));
-  nm.appendChild(el("b", "", c.region ? regionName(c.region) : "지역을 골라 줘"));
-  top.appendChild(nm);
-  const hpBox = el("div", "hc-hp");
+  // 머리띠: 종류 · 이름 · HP · 타입(상징)
+  const top = el("div", "pk-top");
+  top.appendChild(el("span", "pk-kind", "개혁 카드"));
+  top.appendChild(el("b", "pk-name", c.region ? regionName(c.region) : "지역을 골라 줘"));
+  const hpBox = el("span", "pk-hp");
   hpBox.appendChild(el("small", "", "HP"));
   hpBox.appendChild(el("b", "", String(hp(statsNow))));
   top.appendChild(hpBox);
-  card.appendChild(top);
+  top.appendChild(el("span", "pk-type", c.region ? (c.sym || look.syms[0]) : "❔"));
+  inner.appendChild(top);
 
-  const art = el("div", "hc-art");
-  if (c.region) art.appendChild(spriteEl(c.region, { sym: c.sym || look.syms[0], cls: "hc-sprite" }));
-  else art.appendChild(el("span", "hc-sym", "❔"));
-  card.appendChild(art);
-  card.appendChild(el("p", "hc-hit", "당한 일 — " + (withPageView(c.hit, c.pgHit) || "…")));
+  // 그림 창: 지역 배경 + 도트 캐릭터
+  const art = el("div", "pk-art");
+  if (c.region) {
+    art.style.backgroundImage = "url(img/bg_" + c.region + ".png)";
+    art.appendChild(spriteEl(c.region, { cls: "pk-sprite" }));
+  } else art.appendChild(el("span", "pk-qmark", "❔"));
+  inner.appendChild(art);
+  inner.appendChild(el("p", "pk-species", "당한 일 · " + (withPageView(c.hit, c.pgHit) || "…")));
 
-  const mv = el("div", "hc-move");
-  const mh = el("div", "hc-move-head");
-  mh.appendChild(el("span", "hc-badge", "필살기"));
-  mh.appendChild(el("b", "", c.mvName || "…"));
-  mv.appendChild(mh);
-  mv.appendChild(el("p", "", withPageView(c.w1, c.pg1) || "…"));
-  card.appendChild(mv);
+  // 기술 줄: 비용 동그라미(개혁 추진력 별) · 필살기 이름 · 위력
+  const lead = (statsNow.lead && statsNow.lead.n) || 0;
+  const atk = el("div", "pk-atk");
+  const cost = el("span", "pk-cost");
+  for (let i = 0; i < Math.max(1, lead); i++) cost.appendChild(el("i", lead ? "" : "empty"));
+  atk.appendChild(cost);
+  const nm = el("span", "pk-atk-name");
+  nm.appendChild(el("b", "", c.mvName || "…"));
+  nm.appendChild(el("small", "", withPageView(c.w1, c.pg1) || "…"));
+  atk.appendChild(nm);
+  atk.appendChild(el("span", "pk-dmg", lead ? String(lead * RAID.specialPerLead) : "–"));
+  inner.appendChild(atk);
 
-  const st = el("div", "hc-stats");
+  // 능력치 3칸(블록) + 근거 한 줄
+  const st = el("div", "pk-stats");
+  const whys = [];
   STATS.forEach(d => {
     const s = statsNow[d.id] || {};
-    const row = el("div", "hc-stat");
-    const head = el("div", "hc-stat-head");
-    head.appendChild(el("b", "", d.icon + " " + d.name));
+    const col = el("div", "pk-stat");
+    col.appendChild(el("b", "", d.icon + " " + d.name));
     if (opts.edit) {
       const sb = el("div", "stars small");
       starRow(sb, s.n || 0, i => opts.edit(d.id, i), d.name);
-      head.appendChild(sb);
+      col.appendChild(sb);
     } else {
-      head.appendChild(el("span", "hc-stars", starText(s.n || 0)));
+      const bl = el("span", "pk-blocks", "■■■■■".slice(0, s.n || 0));
+      bl.appendChild(el("span", "", "■■■■■".slice(0, 5 - (s.n || 0))));
+      col.appendChild(bl);
     }
-    row.appendChild(head);
     const why = withPageView(s.r, s.p);
-    if (why) row.appendChild(el("p", "", why));
-    st.appendChild(row);
+    if (why) whys.push(d.icon + " " + why);
+    st.appendChild(col);
   });
-  card.appendChild(st);
+  inner.appendChild(st);
+  whys.slice(0, 1).forEach(t => inner.appendChild(el("p", "pk-why", t))); // 근거는 별을 가장 많이 준 능력치 하나뿐(PNG와 같은 배치)
 
-  const foot = el("div", "hc-foot");
-  const wk = el("div", "");
-  wk.appendChild(el("b", "", "약점"));
-  wk.appendChild(el("p", "", withPageView(c.w2, c.pg2) || "…"));
-  foot.appendChild(wk);
-  const rv = el("div", "");
-  rv.appendChild(el("b", "", "라이벌 " + (c.compare ? regionName(c.compare) : "")));
-  rv.appendChild(el("p", "", withPageView(c.w3, c.pg3) || "…"));
-  foot.appendChild(rv);
-  card.appendChild(foot);
+  // 약점 · 라이벌
+  const wk = el("div", "pk-weak");
+  const w1 = el("div", "");
+  w1.appendChild(el("b", "", "약점"));
+  w1.appendChild(el("span", "", withPageView(c.w2, c.pg2) || "…"));
+  wk.appendChild(w1);
+  const w2 = el("div", "");
+  w2.appendChild(el("b", "", "라이벌 " + (c.compare ? regionName(c.compare) : "")));
+  w2.appendChild(el("span", "", withPageView(c.w3, c.pg3) || "…"));
+  wk.appendChild(w2);
+  inner.appendChild(wk);
 
-  card.appendChild(el("p", "hc-flavor", "결과를 가른 것 — " + (c.w4 || "…")));
-  card.appendChild(el("p", "hc-owner", "주제35~39 국민 국가 건설" + (opts.owner ? " · " + opts.owner : "")));
+  inner.appendChild(el("p", "pk-flavor", "결과를 가른 것 — " + (c.w4 || "…")));
+  const foot = el("div", "pk-foot");
+  foot.appendChild(el("span", "", "주제35~39 국민 국가 건설"));
+  foot.appendChild(el("span", "", opts.owner || ""));
+  inner.appendChild(foot);
+  card.appendChild(inner);
   box.appendChild(card);
 }
 
@@ -799,68 +817,94 @@ function drawCard(c, owner) {
   cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d");
   const look = LOOK[c.region] || { c1: "#6d6f86", c2: "#e1e2ea", syms: ["❔"] };
-  roundRect(ctx, 0, 0, W, H, 36); ctx.fillStyle = look.c1; ctx.fill();
-  roundRect(ctx, 22, 22, W - 44, H - 44, 22);
-  const g = ctx.createLinearGradient(0, 22, 0, H);
-  g.addColorStop(0, look.c2); g.addColorStop(1, "#ffffff");
+  // 바깥 황금 테두리(포켓몬 카드 틀)
+  roundRect(ctx, 0, 0, W, H, 36); ctx.fillStyle = "#8a6a10"; ctx.fill();
+  roundRect(ctx, 5, 5, W - 10, H - 10, 32); ctx.fillStyle = "#f5c842"; ctx.fill();
+  // 안쪽 판: 지역 색
+  roundRect(ctx, 30, 30, W - 60, H - 60, 16);
+  const g = ctx.createLinearGradient(0, 30, 0, H - 30);
+  g.addColorStop(0, look.c2); g.addColorStop(0.55, "#fff8f0"); g.addColorStop(1, look.c2);
   ctx.fillStyle = g; ctx.fill();
-  ctx.fillStyle = "#1f1f2e"; ctx.textBaseline = "alphabetic";
-  ctx.font = "700 20px " + FONT; ctx.fillText("개혁 카드", 52, 64);
-  ctx.font = "900 44px " + FONT; ctx.fillText(regionName(c.region), 52, 108);
+  ctx.lineWidth = 3; ctx.strokeStyle = look.c1; ctx.stroke();
+  ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  // 머리띠
+  ctx.fillStyle = "#555555"; ctx.font = "700 16px " + FONT; ctx.fillText("개혁 카드", 56, 86);
+  ctx.fillStyle = "#1f1f2e"; ctx.font = "900 38px " + FONT; drawText(ctx, regionName(c.region), 142, 92, 370, 40, 1);
   const total = hp(c.stats);
-  ctx.textAlign = "right";
-  ctx.font = "900 52px " + FONT; ctx.fillStyle = "#b0302a"; ctx.fillText(String(total), 698, 108);
+  ctx.textAlign = "right"; ctx.fillStyle = "#b0302a"; ctx.font = "900 38px " + FONT; ctx.fillText(String(total), 646, 92);
   const hpW = ctx.measureText(String(total)).width;
-  ctx.font = "700 22px " + FONT; ctx.fillText("HP", 690 - hpW, 106);
-  ctx.textAlign = "left"; ctx.fillStyle = "#1f1f2e";
-  // 그림 칸
-  roundRect(ctx, 52, 124, 646, 300, 10);
-  const ag = ctx.createRadialGradient(375, 274, 20, 375, 274, 340);
-  ag.addColorStop(0, "#ffffff"); ag.addColorStop(1, look.c2);
-  ctx.fillStyle = ag; ctx.fill();
-  ctx.lineWidth = 8; ctx.strokeStyle = "#c9a43a"; ctx.stroke();
-  if (c.region) {
-    ctx.imageSmoothingEnabled = false;
-    paintSprite(ctx, c.region, 375 - 112, 192, 224);
-    ctx.textAlign = "center"; ctx.font = "64px " + FONT;
-    ctx.fillText(c.sym || look.syms[0], 520, 214); // 머리 위 오른쪽에 상징
-  } else {
-    ctx.textAlign = "center"; ctx.fillStyle = "#1f1f2e"; ctx.font = "170px " + FONT;
-    ctx.fillText("❔", 375, 335);
-  }
+  ctx.font = "700 18px " + FONT; ctx.fillText("HP", 640 - hpW, 90);
+  // 타입 동그라미(상징)
+  ctx.beginPath(); ctx.arc(680, 78, 22, 0, Math.PI * 2); ctx.fillStyle = look.c1; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+  ctx.textAlign = "center"; ctx.fillStyle = "#ffffff"; ctx.font = "24px " + FONT;
+  ctx.fillText(c.region ? (c.sym || look.syms[0]) : "❔", 680, 87);
   ctx.textAlign = "left";
-  // 당한 일 띠
-  roundRect(ctx, 64, 436, 622, 66, 8); ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.fill();
-  ctx.fillStyle = "#3a3b52"; ctx.font = "italic 18px " + FONT;
-  drawText(ctx, "당한 일 — " + withPageView(c.hit, c.pgHit), 78, 463, 594, 26, 2);
-  // 필살기
-  ctx.fillStyle = look.c1; roundRect(ctx, 52, 520, 92, 34, 17); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "700 18px " + FONT; ctx.fillText("필살기", 69, 543);
-  ctx.fillStyle = "#1f1f2e"; ctx.font = "900 30px " + FONT; drawText(ctx, c.mvName, 158, 547, 540, 34, 1);
-  ctx.font = "20px " + FONT; drawText(ctx, withPageView(c.w1, c.pg1), 56, 588, 640, 28, 3);
-  // 능력치
-  ctx.strokeStyle = "rgba(0,0,0,.15)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(52, 676); ctx.lineTo(698, 676); ctx.stroke();
+  // 그림 창: 황금 액자 + 지역 배경 + 도트
+  const ax = 56, ay = 112, aw = 638, ah = 330;
+  ctx.fillStyle = "#c9a227"; ctx.fillRect(ax - 8, ay - 8, aw + 16, ah + 16);
+  ctx.fillStyle = "#8a6a10"; ctx.fillRect(ax - 2, ay - 2, aw + 4, ah + 4);
+  ctx.save(); ctx.beginPath(); ctx.rect(ax, ay, aw, ah); ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  const bg = c.region && BG_IMG[c.region];
+  if (bg) {
+    const sc = aw / bg.width, sh = ah / sc, sy = Math.max(0, (bg.height - sh) / 2);
+    ctx.drawImage(bg, 0, sy, bg.width, sh, ax, ay, aw, ah);
+  } else {
+    const ag = ctx.createRadialGradient(375, 274, 20, 375, 274, 340);
+    ag.addColorStop(0, "#ffffff"); ag.addColorStop(1, look.c2);
+    ctx.fillStyle = ag; ctx.fillRect(ax, ay, aw, ah);
+  }
+  if (c.region) paintSprite(ctx, c.region, 375 - 120, ay + ah - 20 - 240, 240);
+  else { ctx.textAlign = "center"; ctx.fillStyle = "#1f1f2e"; ctx.font = "170px " + FONT; ctx.fillText("❔", 375, 335); ctx.textAlign = "left"; }
+  ctx.restore();
+  ctx.imageSmoothingEnabled = true;
+  // 종 한 줄: 당한 일
+  roundRect(ctx, 64, 456, 622, 54, 27); ctx.fillStyle = "#ffffff"; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = "#c9a227"; ctx.stroke();
+  ctx.fillStyle = "#3a3b52"; ctx.font = "italic 17px " + FONT; ctx.textAlign = "center";
+  drawText(ctx, "당한 일 · " + withPageView(c.hit, c.pgHit), 375, 479, 590, 22, 2);
+  ctx.textAlign = "left";
+  // 기술 줄
+  const lead = (c.stats.lead || {}).n || 0;
+  for (let i = 0; i < Math.max(1, lead); i++) { // 별이 0이면 빈 동그라미 하나(화면 카드와 같게)
+    ctx.beginPath(); ctx.arc(70 + i * 28, 546, 11, 0, Math.PI * 2); ctx.fillStyle = lead ? look.c1 : "#dddddd"; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "#333333"; ctx.stroke();
+  }
+  ctx.fillStyle = "#1f1f2e"; ctx.font = "900 28px " + FONT; drawText(ctx, c.mvName, 215, 556, 400, 32, 1);
+  ctx.textAlign = "right"; ctx.font = "900 36px " + FONT; ctx.fillText(lead ? String(lead * RAID.specialPerLead) : "–", 694, 558);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#2b2b33"; ctx.font = "18px " + FONT; drawText(ctx, withPageView(c.w1, c.pg1), 60, 592, 634, 25, 3);
+  const line = y => { ctx.strokeStyle = "#c9a227"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(52, y); ctx.lineTo(698, y); ctx.stroke(); };
+  line(676);
+  // 능력치 3칸(블록) + 근거 한 줄
+  const whys = [];
   STATS.forEach((d, i) => {
     const s = c.stats[d.id] || {};
-    const y = 710 + i * 58;
-    ctx.fillStyle = "#1f1f2e"; ctx.font = "700 23px " + FONT; ctx.fillText(d.icon + " " + d.name, 56, y);
-    ctx.textAlign = "right"; ctx.fillStyle = "#c9871a"; ctx.font = "28px " + FONT; ctx.fillText(starText(s.n || 0), 698, y + 2);
-    ctx.textAlign = "left"; ctx.fillStyle = "#4a4b60"; ctx.font = "17px " + FONT;
-    drawText(ctx, withPageView(s.r, s.p), 92, y + 25, 604, 22, 1);
+    const x = 60 + i * 214, n = s.n || 0;
+    ctx.fillStyle = "#555555"; ctx.font = "700 15px " + FONT; ctx.fillText(d.icon + " " + d.name, x, 704);
+    ctx.font = "22px " + FONT; ctx.fillStyle = "#a0741a"; ctx.fillText("■■■■■".slice(0, n), x, 732);
+    const w = ctx.measureText("■■■■■".slice(0, n)).width;
+    ctx.fillStyle = "#b9b9b9"; ctx.fillText("■■■■■".slice(0, 5 - n), x + w, 732);
+    const why = withPageView(s.r, s.p);
+    if (why) whys.push(d.icon + " " + why);
   });
-  ctx.beginPath(); ctx.moveTo(52, 872); ctx.lineTo(698, 872); ctx.stroke();
-  // 약점·라이벌
-  [["약점", withPageView(c.w2, c.pg2), 56], ["라이벌 " + regionName(c.compare), withPageView(c.w3, c.pg3), 386]].forEach(([h, t, x]) => {
-    ctx.fillStyle = "#1f1f2e"; ctx.font = "700 18px " + FONT; ctx.fillText(h, x, 898);
-    ctx.fillStyle = "#4a4b60"; ctx.font = "15px " + FONT; drawText(ctx, t, x, 920, 306, 20, 2);
+  ctx.fillStyle = "#4a4b60"; ctx.font = "15px " + FONT;
+  whys.slice(0, 1).forEach(t => drawText(ctx, t, 60, 760, 634, 20, 1));
+  line(780);
+  // 약점 · 라이벌
+  [["약점", withPageView(c.w2, c.pg2), 60], ["라이벌 " + regionName(c.compare), withPageView(c.w3, c.pg3), 390]].forEach(([h, t, x]) => {
+    ctx.fillStyle = "#555555"; ctx.font = "700 15px " + FONT; ctx.fillText(h, x, 806);
+    ctx.fillStyle = "#2b2b33"; ctx.font = "15px " + FONT; drawText(ctx, t, x, 828, 300, 20, 2);
   });
-  // 결과를 가른 것(카드 아래 설명 자리)
-  roundRect(ctx, 52, 952, 646, 50, 6); ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fill();
-  ctx.fillStyle = "#3a3b52"; ctx.font = "italic 15px " + FONT;
-  drawText(ctx, "결과를 가른 것 — " + oneLine(c.w4), 64, 972, 622, 20, 2);
-  ctx.fillStyle = "#ffffff"; ctx.font = "500 15px " + FONT;
-  ctx.fillText("주제35~39 국민 국가 건설 · " + owner, 40, 1040);
+  // 설명문: 결과를 가른 것
+  roundRect(ctx, 56, 878, 638, 60, 6); ctx.fillStyle = "#fffdf5"; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = "#c9a227"; ctx.stroke();
+  ctx.fillStyle = "#333333"; ctx.font = "italic 15px " + FONT;
+  drawText(ctx, "결과를 가른 것 — " + oneLine(c.w4), 68, 902, 614, 21, 2);
+  // 번호
+  ctx.fillStyle = "#555555"; ctx.font = "500 14px " + FONT; ctx.fillText("주제35~39 국민 국가 건설", 56, 1000);
+  ctx.textAlign = "right"; ctx.fillText(owner, 694, 1000); ctx.textAlign = "left";
   return cv;
 }
 
@@ -877,19 +921,46 @@ async function saveCardImage() {
   $("outMsg").textContent = "카드 그림을 저장했어. 패들렛에 그림을 올리고 복사한 글도 붙여 줘.";
 }
 
-/* ══ 도트 캐릭터 그리기 ══ img/<id>.png가 있으면 그 그림, 없으면 data.js 격자. 2부 카드 그림(PNG)과 3부 화면이 같이 쓴다. */
-const SPRITE_IMG = {};
+/* ══ 도트 캐릭터 그리기 ══ img/<id>.png(2026-10-30, 힉스필드로 만든 뒤 격자 축소한 128px 도트)가 있으면 그 그림, 없으면 data.js 격자.
+ * 배경 img/bg_<지역>.png(카드 그림 창)·bg_battle.png(3부)도 같이 미리 부른다. 2부 카드 그림(PNG)과 3부 화면이 같이 쓴다. */
+const SPRITE_IMG = {}, BG_IMG = {};
 function preloadSpriteImages() {
   SPRITE_FILES.forEach(id => { // 파일을 넣은 그림만 부른다(없는 파일을 찾느라 404가 나지 않게)
     const im = new Image();
-    im.onload = () => { SPRITE_IMG[id] = im; };
+    im.onload = () => { SPRITE_IMG[id] = im; redrawAfterLoad(); };
     im.src = "img/" + id + ".png";
   });
+  BG_FILES.forEach(id => {
+    const im = new Image();
+    im.onload = () => { BG_IMG[id] = im; redrawAfterLoad(); };
+    im.src = "img/bg_" + id + ".png";
+  });
+}
+/* 그림이 늦게 도착하면(학교망) 격자로 먼저 그려진 카드·전투 화면을 PNG로 다시 그린다 */
+function redrawAfterLoad() {
+  try {
+    if ($("cardView") && $("cardView").childElementCount) renderSummary();
+    if (S.raid && !$("raidArena").hidden) renderArena();
+  } catch (e) { /* 아직 화면이 없으면 그냥 둔다 */ }
 }
 
 function paintSprite(ctx, id, x, y, size, foe) {
-  const img = !foe && SPRITE_IMG[id];
-  if (img) { ctx.drawImage(img, x, y, size, size); return; }
+  const img = SPRITE_IMG[id];
+  if (img) {
+    ctx.imageSmoothingEnabled = false;
+    if (!foe) { ctx.drawImage(img, x, y, size, size); return; }
+    // 열강 편으로 넘어간 카드: 차가운 강철색으로 물들인다
+    const t = document.createElement("canvas");
+    t.width = t.height = size;
+    const tc = t.getContext("2d");
+    tc.imageSmoothingEnabled = false;
+    tc.drawImage(img, 0, 0, size, size);
+    tc.globalCompositeOperation = "source-atop";
+    tc.fillStyle = "rgba(60,70,92,.6)";
+    tc.fillRect(0, 0, size, size);
+    ctx.drawImage(t, x, y);
+    return;
+  }
   const rows = spriteRows(id);
   if (!rows) return;
   const pal = spritePal(id, foe);
@@ -901,14 +972,14 @@ function paintSprite(ctx, id, x, y, size, foe) {
   }));
 }
 
-/* 화면용: 96px 캔버스를 CSS로 키운다(image-rendering: pixelated). sym이 있으면 머리 위에 띄운다. */
+/* 화면용: 128px 캔버스를 CSS로 키운다(image-rendering: pixelated). sym이 있으면 머리 위에 띄운다. */
 function spriteEl(id, opts) {
   opts = opts || {};
   const wrap = el("div", "sprite" + (opts.foe ? " foe" : "") + (opts.cls ? " " + opts.cls : ""));
   const cv = document.createElement("canvas");
-  cv.width = 96; cv.height = 96;
+  cv.width = 128; cv.height = 128;
   cv.setAttribute("aria-hidden", "true");
-  paintSprite(cv.getContext("2d"), id, 0, 0, 96, opts.foe);
+  paintSprite(cv.getContext("2d"), id, 0, 0, 128, opts.foe);
   wrap.appendChild(cv);
   if (opts.sym) wrap.appendChild(el("span", "sprite-sym", opts.sym));
   return wrap;
@@ -1108,7 +1179,15 @@ function hpBar(cur, max, cls) {
   bar.appendChild(fill);
   return bar;
 }
+/* 열강 HP를 하트 8개로(수학몬식). 남은 비율만큼 채운다 */
+function hearts(cur, max) {
+  const n = Math.max(0, Math.min(8, max ? Math.ceil(cur / max * 8) : 0));
+  return "♥".repeat(n) + "♡".repeat(8 - n);
+}
+function openRules() { $("rulesModal").hidden = false; }
+function closeRules() { $("rulesModal").hidden = true; }
 
+/* 전투 화면(2026-10-30 수학몬 포맷): 19세기 항구 배경 위에 열강(오른쪽 위)·모둠(왼쪽 아래)·차례 상자, 아래에 대화창+기술 메뉴 2×2 */
 function renderArena() {
   const st = S.raid;
   if (!st) return;
@@ -1120,6 +1199,7 @@ function renderArena() {
   st.members.forEach(m => { if (m.foe) bs.appendChild(spriteEl(m.region, { foe: true, cls: "ally-sprite", sym: m.sym })); });
   if (st.japanAlly) bs.appendChild(spriteEl("japan", { foe: true, cls: "ally-sprite" }));
   $("bossName").textContent = PART3.bossName;
+  $("bossHearts").textContent = hearts(st.boss.hp, st.boss.max);
   $("bossHp").textContent = "HP " + st.boss.hp + " / " + st.boss.max;
   $("bossBar").style.width = Math.max(0, st.boss.hp / st.boss.max * 100) + "%";
 
@@ -1133,21 +1213,32 @@ function renderArena() {
     const info = el("div", "f-info");
     info.appendChild(el("b", "", regionShort(m)));
     if (m.name) info.appendChild(el("span", "f-name", m.name));
-    info.appendChild(el("span", "f-move", "«" + m.mvName + "»"));
     info.appendChild(hpBar(m.hp, m.max));
-    info.appendChild(el("span", "hp-num", "HP " + m.hp + " / " + m.max));
+    info.appendChild(el("span", "hp-num", "HP " + m.hp + "/" + m.max));
     c.appendChild(info);
     tz.appendChild(c);
   });
 
+  // 차례 상자(오른쪽 아래)
+  const tb = $("turnBox");
+  tb.innerHTML = "";
+  tb.appendChild(el("b", "", "▶ " + (cur >= 0 ? PART3.turnOf(regionShort(st.members[cur]), st.members[cur].name) : PART3.bossTurn)));
+  tb.appendChild(el("small", "", PART3.turnStat(st.fallen, st.bossTurns)));
+
+  // 대화창
   const mb = $("msgBox");
   const waiting = S.msgs.length > 0;
   mb.innerHTML = "";
   if (waiting) { mb.appendChild(el("span", "msg-line", S.msgs[0])); mb.appendChild(el("small", "msg-next", PART3.tapNext)); }
   else if (st.over) mb.appendChild(el("span", "msg-line", st.over === "win" ? PART3.winTitle : PART3.loseTitle));
-  else mb.appendChild(el("span", "msg-line", cur >= 0 ? PART3.turnOf(regionShort(st.members[cur]), st.members[cur].name) : PART3.bossTurn));
+  else if (cur >= 0) {
+    const m = st.members[cur];
+    mb.appendChild(el("span", "msg-line", PART3.ask(regionShort(m))));
+    mb.appendChild(el("small", "msg-sub", PART3.moveInfo(m.mvName, m.lead, RAID.specialPerLead)));
+  } else mb.appendChild(el("span", "msg-line", PART3.bossTurn));
   mb.disabled = !waiting;
 
+  // 기술 메뉴
   const sk = $("skillBox");
   sk.innerHTML = "";
   if (waiting || S.modalOpen) return;
@@ -1158,12 +1249,14 @@ function renderArena() {
     btn(PART3.skillSpecial(m.mvName) + (canSpecial(m) ? "" : " · " + PART3.skillRest), () => doSkill("special"), !canSpecial(m), "sp");
     btn(PART3.skillGuard, () => doSkill("guard"));
     btn(PART3.skillHeal, () => doSkill("heal"));
+    btn(PART3.rulesBtn, openRules, false, "dim");
   } else if (st.controller >= 0) {
     sk.appendChild(el("p", "ctrl-q", PART3.ctrlTurn(st.members[st.controller].name || "일본 카드 주인")));
     btn(PART3.ctrlRandom, () => doBoss("random"), false, "foe-btn");
     btn(PART3.ctrlWeak, () => doBoss("weak"), false, "foe-btn");
   } else {
     btn(PART3.bossGo, () => doBoss(""), false, "foe-btn");
+    btn(PART3.rulesBtn, openRules, false, "dim");
   }
 }
 
@@ -1292,7 +1385,8 @@ function init() {
   $("setupNote").textContent = S.final ? PART3.finalSetupNote : PART3.setupNote;
   $("basicNote").textContent = PART3.basicNote;
   $("rulesTitle").textContent = PART3.rulesTitle;
-  PART3.rules.forEach(r => $("rulesList").appendChild(el("li", "", r)));
+  PART3.rules.forEach(r => { $("rulesList").appendChild(el("li", "", r)); $("rulesList2").appendChild(el("li", "", r)); });
+  $("rulesTitle2").textContent = PART3.rulesTitle; $("rulesClose").textContent = PART3.closeBtn;
   $("raidStart").textContent = PART3.startBtn;
   $("jpQ").textContent = PART3.jpQ;
   $("jpGo").textContent = PART3.jpGo;
@@ -1329,11 +1423,13 @@ function init() {
   $("basicJoin").addEventListener("click", joinBasic);
   $("raidStart").addEventListener("click", startRaid);
   $("finalOnly").addEventListener("click", finalOnly);
+  $("rulesClose").addEventListener("click", closeRules);
+  $("rulesModal").addEventListener("click", e => { if (e.target === $("rulesModal")) closeRules(); });
   $("msgBox").addEventListener("click", nextMsg);
   $("jpGo").addEventListener("click", closeJpModal);
   $("raidRetry").addEventListener("click", retryRaid);
   preloadSpriteImages();
-  Glossary.start({ terms: GLOSSARY, unique: true, skip: [".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".hcard", ".rank-list", ".stars", ".arena", ".member-list", ".modal"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
+  Glossary.start({ terms: GLOSSARY, unique: true, skip: [".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".pk", ".rank-list", ".stars", ".arena", ".member-list", ".modal"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
 }
 
 init();
