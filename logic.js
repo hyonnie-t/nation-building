@@ -340,5 +340,19 @@ function spritePal(id, foe) {
   return Object.assign({ a: look.c1, b: look.c2 }, SPRITE_PAL.base);
 }
 
-if (typeof module !== "undefined") module.exports = { TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
+/* 2부 고치기 기한: 학생마다 첫 제출 시각부터 hours시간. 시각을 못 읽으면 고칠 수 없는 쪽으로 둔다(제출한 글은 그대로 남음). */
+function firstSubmitAt(acts) {
+  const times = (acts || []).map(a => new Date(a.timestamp).getTime()).filter(t => isFinite(t) && t > 0);
+  return times.length ? Math.min.apply(null, times) : 0;
+}
+function canEditAt(firstAt, now, hours) {
+  return firstAt > 0 && now < firstAt + hours * 36e5;
+}
+function deadlineText(firstAt, hours) {
+  const d = new Date(firstAt + hours * 36e5);
+  const h = d.getHours(), m = d.getMinutes();
+  return (d.getMonth() + 1) + "월 " + d.getDate() + "일 " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시" + (m ? " " + m + "분" : "");
+}
+
+if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
   dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };

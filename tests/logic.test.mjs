@@ -10,6 +10,17 @@ let n = 0;
 const J = x => JSON.stringify(x);
 const t = (name, fn) => { fn(); n++; console.log("ok - " + name); };
 
+t("고치기 기한: 학생별 가장 이른 제출부터 12시간", () => {
+  const first = "2026-11-05T01:00:00.000Z", later = "2026-11-05T03:00:00.000Z";
+  const at = L.firstSubmitAt([{ timestamp: later }, { timestamp: first }, { timestamp: "" }]);
+  assert.equal(at, Date.parse(first));
+  assert.equal(L.canEditAt(at, at + 12 * 36e5 - 1, 12), true);
+  assert.equal(L.canEditAt(at, at + 12 * 36e5, 12), false);
+  assert.equal(L.firstSubmitAt([{ timestamp: "" }]), 0);
+  assert.equal(L.canEditAt(0, 1, 12), false);
+  assert.match(L.deadlineText(at, 12), /^\d+월 \d+일 (오전|오후) \d+시/);
+});
+
 t("채점 기준: 8점+7점=15점, 단계 점수는 교사용 안내와 같다", () => {
   assert.deepEqual(Array.from(PART2.rubric, r => r.max), [8, 7]);
   assert.deepEqual(Array.from(PART2.rubric[0].levels, l => l[0]), [8, 6, 4]);
