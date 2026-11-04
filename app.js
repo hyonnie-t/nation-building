@@ -15,7 +15,7 @@ const S = {
   placed: {}, cur: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
   final: false, members: [], raid: null, msgs: [], modalOpen: false, quiz: null, quizUsed: [], basicFor: null, basicRegion: "", raidDone: false,
-  copied: false, sending: false, submitted: false, padletUrl: "", padletLoading: false
+  copied: false, sending: false, submitted: false, everSubmitted: false, padletUrl: "", padletLoading: false
 };
 const SAVE_KEYS = { 1: ["placed", "cur", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
 const W_IDS = ["hit", "w1", "w2", "r_top", "w3", "w4"];
@@ -417,6 +417,30 @@ async function submitPart1() {
 }
 
 /* ══ 2부: 개혁 캐릭터 카드 ══ */
+/* 채점 기준 안내(2026-11-04 효니 요청). 문구는 data.js PART2.rubric, 원본은 교사용 안내 «채점(15점)» */
+function renderRubric() {
+  $("rubricTitle").textContent = PART2.rubricTitle;
+  const box = $("rubricBody");
+  box.innerHTML = "";
+  PART2.rubric.forEach(r => {
+    const item = el("div", "rubric-item");
+    item.appendChild(el("h3", "rubric-name", r.name + " (" + r.max + "점)"));
+    item.appendChild(el("p", "rubric-what", r.what));
+    const ul = el("ul", "rubric-levels");
+    r.levels.forEach(([score, text]) => {
+      const li = el("li");
+      li.appendChild(el("b", "", score + "점"));
+      li.appendChild(el("span", "", text));
+      ul.appendChild(li);
+    });
+    item.appendChild(ul);
+    box.appendChild(item);
+  });
+  const notes = el("ul", "rubric-notes");
+  PART2.rubricNotes.forEach(t => notes.appendChild(el("li", "", t)));
+  box.appendChild(notes);
+}
+
 function choiceRow(text, checked, onPick, cls) {
   const row = el("div", cls || "opt");
   row.setAttribute("role", "radio");
@@ -560,7 +584,9 @@ function renderSummary() {
   $("bodyCount").textContent = "내가 쓴 글 " + n + "자 (지역·쪽수·별 제외)" + (short ? " — " + PART2.totalMin + "자 이상 써 보자." : "");
   $("bodyCount").classList.toggle("warn", short);
   $("submitBtn").disabled = S.submitted || S.sending;
-  $("submitBtn").textContent = S.submitted ? "제출 완료" : "제출";
+  $("submitBtn").textContent = S.submitted ? "제출 완료" : (S.everSubmitted ? PART2.resubmitBtn : "제출");
+  $("editBtn").hidden = !S.submitted;
+  saveEditSnapshot();
   renderPadlet();
 }
 
@@ -586,7 +612,7 @@ function p2Problem() {
   if (!reasonStat()) return ["reasonPick", "근거를 쓸 능력치를 하나 골라 줘."];
   if (val("r_top").length < 5) return ["r_top", "별을 가장 많이 준 능력치의 근거를 써 줘."];
   if (!S.compare) return ["comparePick", "라이벌 지역을 골라 줘."];
-  if (val("w3").length < 10) return ["w3", "라이벌과 견준 내용을 조금 더 써 줘."];
+  if (val("w3").length < 10) return ["w3", "라이벌과 비교한 내용을 조금 더 써 줘."];
   if (val("w4").length < 10) return ["w4", "«결과를 가른 것»을 조금 더 써 줘."];
   return null;
 }
@@ -595,8 +621,7 @@ async function submitPart2() {
   if (S.sending || S.submitted) return;
   $("outErr").textContent = "";
   const prob = p2Problem();
-  if (prob && !skip()) { $("p2Err").textContent = prob[1]; $(prob[0]).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
-  $("p2Err").textContent = "";
+  if (prob && !skip()) { $("outErr").textContent = prob[1]; toast(prob[1]); $(prob[0]).scrollIntoView({ behavior: "smooth", block: "center" }); return; } // 그 칸으로 옮겨 가도 무엇이 빠졌는지 보이게 토스트도 띄운다
   const noPage = PG_IDS.filter(id => !val(id));
   if (noPage.length && !skip() && !confirm("교과서 쪽수가 빠진 칸이 " + noPage.length + "곳 있어. 그래도 제출할까?")) return;
   const used = starSum(S.stars);
@@ -620,26 +645,80 @@ async function submitPart2() {
     S.sending = false; renderSummary();
     return;
   }
-  S.sending = false; S.submitted = true;
+  const again = S.everSubmitted;
+  S.sending = false; S.submitted = true; S.everSubmitted = true;
   if (!S.preview) {
     if (window.DraftGuard) DraftGuard.clear(); // 저장 성공 → 임시저장 삭제
     clearSave();
+    clearEditSnapshot();
   }
   lockPart2();
-  $("outMsg").textContent = S.preview ? "미리보기라 저장하지 않았어." : "제출했어! 이제 카드 그림을 저장하고 글을 복사해서 패들렛에 올려 줘.";
+  $("outMsg").textContent = S.preview ? "미리보기라 저장하지 않았어." : (again ? PART2.resubmittedMsg : PART2.submittedMsg);
 }
 
+const P2_FIELDS = () => W_IDS.concat(PG_IDS, ["mvName"]);
+
 function lockPart2() {
-  W_IDS.concat(PG_IDS, ["mvName"]).forEach(id => { $(id).readOnly = true; }); // 제출 뒤 수정 잠금
+  P2_FIELDS().forEach(id => { $(id).readOnly = true; }); // 제출한 카드는 «고치기»를 눌러야 다시 쓸 수 있다
   renderPicks();
   renderStarInputs();
   renderSummary();
+}
+
+/* 제출 뒤 고치기(2026-11-04 효니 요청). 다시 내면 시트에 새 행이 쌓이고, 3부·복원은 가장 최근 행을 읽는다. */
+function editPart2() {
+  if (!S.submitted || S.sending) return;
+  S.submitted = false;
+  P2_FIELDS().forEach(id => { $(id).readOnly = false; });
+  renderPicks();
+  renderStarInputs();
+  renderSummary();
+  $("outErr").textContent = "";
+  $("outMsg").textContent = PART2.editMsg;
+  document.querySelector(".p2-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* 고치는 중에 화면이 새로고침돼도 서버의 옛 카드로 덮이지 않게, 이 기기·이 학번으로 고치던 내용을 남겨 둔다. 다시 내면 지운다. */
+function editKey() { return storeKey() + ":edit"; }
+
+function saveEditSnapshot() {
+  if (S.preview || !S.sid || !S.everSubmitted || S.submitted) return;
+  const f = {};
+  P2_FIELDS().forEach(id => { f[id] = $(id).value; });
+  try {
+    localStorage.setItem(editKey(), JSON.stringify({ ts: Date.now(), name: S.name, f, region: S.region, compare: S.compare, sym: S.sym, stars: S.stars, reasonStat: S.reasonStat }));
+  } catch (e) { /* 저장소가 막히면 메모리만 */ }
+}
+
+function readEditSnapshot() {
+  try {
+    const v = JSON.parse(localStorage.getItem(editKey()) || "null");
+    if (!v) return null;
+    const ok = v.f && typeof v.f === "object" && v.name === S.name && v.stars && typeof v.stars === "object"
+      && starSum(v.stars) <= RAID.starTotal && Date.now() - (v.ts || 0) <= 7 * 864e5;
+    if (!ok) clearEditSnapshot(); // 깨졌거나 오래됐거나 이름이 다르면 쓰지 않고 지운다(공용 태블릿)
+    return ok ? v : null;
+  } catch (e) { clearEditSnapshot(); return null; }
+}
+function clearEditSnapshot() {
+  try { localStorage.removeItem(editKey()); } catch (e) { /* 무시 */ }
 }
 
 /* 제출 뒤 새로고침해도 그림 저장·글 복사를 할 수 있게, 이미 낸 카드가 있으면 포털 기록에서 되살려 잠근다.
  * (기기에는 남기지 않는다 — 공용 태블릿에서 다음 학생에게 앞 학생 글이 보이지 않게) */
 async function restoreSubmitted() {
   if (S.preview) return;
+  const snap = readEditSnapshot();
+  if (snap) { // 고치던 중이었으면 서버의 옛 카드 대신 고치던 내용으로 이어 쓴다
+    S.everSubmitted = true;
+    S.region = snap.region; S.compare = snap.compare; S.sym = snap.sym; S.stars = snap.stars; S.reasonStat = snap.reasonStat;
+    P2_FIELDS().forEach(id => { $(id).value = snap.f[id] || ""; });
+    renderPicks();
+    renderStarInputs();
+    refreshCounts();
+    $("outMsg").textContent = PART2.editMsg;
+    return;
+  }
   try {
     const url = CONFIG.SHEET_WEBAPP_URL + "?mode=student&studentId=" + encodeURIComponent(S.sid) + "&name=" + encodeURIComponent(S.name);
     const json = await (await fetch(url)).json();
@@ -651,12 +730,12 @@ async function restoreSubmitted() {
     put("hit", c.hit); put("pgHit", c.pgHit); put("mvName", c.mvName); put("w1", c.w1); put("pg1", c.pg1);
     put("w2", c.w2); put("pg2", c.pg2); put("w3", c.w3); put("pg3", c.pg3); put("w4", c.w4);
     STATS.forEach(d => { const s = c.stats[d.id] || {}; S.stars[d.id] = s.n || 0; if (s.r) { S.reasonStat = d.id; put("r_top", s.r); put("p_top", s.p); } });
-    S.submitted = true;
+    S.submitted = true; S.everSubmitted = true;
     if (window.DraftGuard) DraftGuard.clear();
     clearSave();
     lockPart2();
     refreshCounts();
-    $("outMsg").textContent = "이미 제출한 카드야. 카드 그림 저장과 글 복사는 할 수 있어.";
+    $("outMsg").textContent = PART2.restoredMsg;
   } catch (e) { /* 못 불러오면 그냥 새로 쓰는 화면 */ }
 }
 
@@ -676,7 +755,7 @@ async function copyText(text) {
 }
 
 async function copyOut() {
-  if (p2Problem() && !skip()) { $("p2Err").textContent = "카드 칸을 다 채운 다음 복사해 줘."; return; }
+  if (p2Problem() && !skip()) { $("outErr").textContent = "카드 칸을 다 채운 다음 복사해 줘."; return; }
   const ok = await copyText(buildOutText());
   if (!ok) { $("outMsg").textContent = "복사가 안 됐어. 한 번 더 눌러 줘."; return; }
   S.copied = true;
@@ -909,7 +988,7 @@ function drawCard(c, owner) {
 }
 
 async function saveCardImage() {
-  if (!S.region && !skip()) { $("p2Err").textContent = "지역을 고른 다음 저장해 줘."; return; }
+  if (!S.region && !skip()) { $("outErr").textContent = "지역을 고른 다음 저장해 줘."; return; }
   try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) { /* 글꼴이 늦으면 기본 글꼴로 */ }
   const cv = drawCard(cardFromForm(), S.sid + " " + S.name);
   const url = cv.toDataURL("image/png");
@@ -918,7 +997,7 @@ async function saveCardImage() {
   const a = el("a");
   a.href = url; a.download = "역사카드_" + S.sid + ".png";
   document.body.appendChild(a); a.click(); a.remove();
-  $("outMsg").textContent = "카드 그림을 저장했어. 패들렛에 그림을 올리고 복사한 글도 붙여 줘.";
+  $("outMsg").textContent = "카드 그림을 저장했어. 패들렛에 그림을 올리고 복사한 글도 붙여 줘. 저장이 안 됐으면 아래로 내려서 그림을 길게 눌러 줘.";
 }
 
 /* ══ 도트 캐릭터 그리기 ══ img/<id>.png(2026-10-30, 힉스필드로 만든 뒤 격자 축소한 128px 도트)가 있으면 그 그림, 없으면 data.js 격자.
@@ -1380,7 +1459,7 @@ function init() {
   const q = new URLSearchParams(location.search);
   S.part = q.get("part") === "2" ? 2 : q.get("part") === "3" ? 3 : 1;
   CONFIG.GAME_NAME = CONFIG.GAME_NAMES[S.part];
-  if (S.part !== 2) document.body.classList.add("wide"); // 분류판·레이드 화면은 넓은 화면에서 펼친다
+  document.body.classList.add(S.part !== 2 ? "wide" : "part2"); // 분류판·레이드 화면은 넓은 화면에서 펼치고, 2부는 태블릿 가로에서 2단
   S.final = S.part === 3 && q.get("final") === "1";
   if (S.final) document.body.classList.add("eboard"); // 전자칠판: 큰 글씨
   S.preview = q.get("preview") === "1";
@@ -1421,6 +1500,8 @@ function init() {
   $("mvName").placeholder = PART2.mvNamePh;
   STATS.forEach(d => $("statHint").appendChild(el("li", "", d.icon + " " + d.name + " — " + d.q)));
   $("wrapGuide").textContent = PART2.guide;
+  renderRubric();
+  $("editBtn").textContent = PART2.editBtn;
   $("saveBtn").textContent = PART2.saveBtn;
   $("copyBtn").textContent = PART2.copyBtn;
   $("padletBtn").textContent = PART2.padletBtn;
@@ -1457,7 +1538,8 @@ function init() {
   $("boardSkip").addEventListener("click", () => { showDone1(); $("p1Done").scrollIntoView({ behavior: "smooth", block: "start" }); });
   $("t1").addEventListener("input", () => { $("t1c").textContent = val("t1").length + "자"; $("p1Err").textContent = ""; });
   $("p1Submit").addEventListener("click", submitPart1);
-  W_IDS.concat(PG_IDS, ["mvName"]).forEach(id => $(id).addEventListener("input", () => { $("p2Err").textContent = ""; refreshCounts(); }));
+  W_IDS.concat(PG_IDS, ["mvName"]).forEach(id => $(id).addEventListener("input", () => { $("outErr").textContent = ""; refreshCounts(); }));
+  $("editBtn").addEventListener("click", editPart2);
   $("copyBtn").addEventListener("click", copyOut);
   $("saveBtn").addEventListener("click", saveCardImage);
   $("submitBtn").addEventListener("click", submitPart2);
@@ -1473,7 +1555,7 @@ function init() {
   $("jpGo").addEventListener("click", closeJpModal);
   $("raidRetry").addEventListener("click", retryRaid);
   preloadSpriteImages();
-  Glossary.start({ terms: GLOSSARY, unique: true, skip: [".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".pk", ".rank-list", ".stars", ".arena", ".member-list", ".modal"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
+  Glossary.start({ terms: GLOSSARY, unique: true, skip: ["[hidden]", ".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".pk", ".rank-list", ".stars", ".arena", ".member-list", ".modal"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
 }
 
 init();

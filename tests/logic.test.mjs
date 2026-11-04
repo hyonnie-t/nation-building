@@ -1,13 +1,32 @@
 // node tests/logic.test.mjs — 판정 함수, data.js 카드 구성, 카드 글 왕복, 레이드 계산·균형 시뮬레이션 시험
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { loadCtx, report } from "./sim.mjs";
 
 const ctx = loadCtx();
 const L = ctx.module.exports;
-const { REGIONS, COLS, CARDS, TRAPS, SUMMARY } = ctx;
+const { REGIONS, COLS, CARDS, TRAPS, SUMMARY, PART2, GLOSSARY } = ctx;
 let n = 0;
 const J = x => JSON.stringify(x);
 const t = (name, fn) => { fn(); n++; console.log("ok - " + name); };
+
+t("채점 기준: 8점+7점=15점, 단계 점수는 교사용 안내와 같다", () => {
+  assert.deepEqual(Array.from(PART2.rubric, r => r.max), [8, 7]);
+  assert.deepEqual(Array.from(PART2.rubric[0].levels, l => l[0]), [8, 6, 4]);
+  assert.deepEqual(Array.from(PART2.rubric[1].levels, l => l[0]), [7, 6, 5]);
+});
+
+t("학생 화면 문구에 «견줘»·«견준»을 쓰지 않는다(비교해 봐)", () => {
+  const code = f => fs.readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  ["data.js", "app.js", "index.html"].forEach(f => assert.ok(!/견줘|견준/.test(code(f)), f));
+});
+
+t("단서 카드의 어려운 낱말에 풀이가 있다", () => {
+  ["굴복", "입헌", "무산", "급진 개화파", "정변", "탐관오리", "처단", "명시", "헐값", "독점권", "불매 운동"].forEach(w => {
+    assert.ok(GLOSSARY[w], w);
+    assert.ok(CARDS.concat(TRAPS).some(k => k.t.includes(w)), w);
+  });
+});
 
 t("지역 7 × 칸 3 = 카드 21장, 칸마다 정확히 한 장", () => {
   assert.equal(CARDS.length, REGIONS.length * COLS.length);
