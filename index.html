@@ -86,12 +86,20 @@
 
   <!-- P2 2차시: 개혁 캐릭터 카드(수행평가) -->
   <section id="p2" class="screen" hidden>
+   <div class="p2-grid">
+    <div class="p2-side">
     <details class="card ref">
       <summary id="refTitle"></summary>
       <p id="refNote" class="note"></p>
       <ol id="refList" class="sum-list"></ol>
     </details>
+    <details class="card rubric" open>
+      <summary id="rubricTitle"></summary>
+      <div id="rubricBody"></div>
+    </details>
+    </div>
 
+    <div class="p2-form">
     <div class="card">
       <label id="regionQ" class="q first"></label>
       <div id="regionPick" class="opt-grid"></div>
@@ -155,16 +163,17 @@
       <textarea id="w4" rows="4"></textarea>
       <div class="row-meta"><span></span><span class="count" id="w4c"></span></div>
       <p id="must" class="must"></p>
-      <p id="p2Err" class="err" role="alert"></p>
+    </div>
     </div>
 
-    <div class="card">
+    <div class="card p2-out">
       <p id="wrapGuide" class="lead"></p>
       <div id="cardView" class="card-stage"></div>
       <p id="bodyCount" class="note"></p>
       <p id="outErr" class="err" role="alert"></p>
       <div class="btn-row">
         <button id="submitBtn" class="btn">제출</button>
+        <button id="editBtn" class="btn btn-ghost" hidden></button>
         <button id="saveBtn" class="btn btn-ghost"></button>
         <button id="copyBtn" class="btn btn-ghost"></button>
       </div>
@@ -179,6 +188,7 @@
         <p id="padletMsg" class="note"></p>
       </div>
     </div>
+   </div>
   </section>
 
   <!-- P3 3차시: 모둠 열강 보스 레이드(정리, 평가 아님) / ?final=1이면 전자칠판 최종 보스전 -->

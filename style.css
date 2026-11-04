@@ -145,6 +145,31 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
   .rname{grid-column:1/-1}
   .opt-grid{grid-template-columns:repeat(3,1fr)}
 }
+/* 2부 채점 기준 */
+.rubric summary,.ref summary{cursor:pointer;font:700 1.08rem var(--serif);color:var(--indigo-deep);min-height:44px}
+.rubric-item{margin-top:12px}
+.rubric-name{font:700 1rem/1.5 var(--sans);color:var(--indigo-deep);margin:0}
+.rubric-what{margin:0 0 4px;font:16px/1.6 var(--sans);color:var(--muted)}
+.rubric-levels,.rubric-notes{margin:0;padding:0;list-style:none;font:16px/1.6 var(--sans)}
+.rubric-levels li{display:grid;grid-template-columns:3.4em 1fr;gap:6px;padding:4px 0;border-top:1px solid var(--line)}
+.rubric-levels b{color:var(--saffron-ink)}
+.rubric-notes{margin-top:12px;padding:10px 12px;background:var(--indigo-wash);border-radius:4px}
+.rubric-notes li+li{margin-top:6px}
+
+/* 2부 태블릿 가로: 왼쪽은 정리·채점 기준과 실시간 카드(스크롤해도 붙어 있음), 오른쪽은 쓰는 칸 (empire-rebut .split과 같은 조건, 2026-11-04) */
+@media (min-width:900px) and (orientation:landscape){
+  body.part2 .page{max-width:min(96vw,80rem)}
+  body.part2 .book-head{padding:4px 0}
+  body.part2 h1{font-size:1.4rem;margin:6px 0 10px}
+  .p2-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto 1fr;grid-template-areas:"side form" "out form";column-gap:16px;align-items:start}
+  .p2-side{grid-area:side}
+  .p2-form{grid-area:form}
+  .p2-out{grid-area:out;position:sticky;top:8px;max-height:calc(100vh - 16px);overflow-y:auto;scroll-margin-top:8px}
+  .p2-out .btn-row{position:sticky;bottom:-20px;background:var(--page);padding:0 0 12px;margin-bottom:-12px;z-index:2} /* 카드가 길어도 제출 버튼은 늘 보이게 */
+  .p2-out .btn-row .btn{padding:8px 10px;font-size:1rem}
+  .p2-form .opt-grid{grid-template-columns:repeat(3,1fr)}
+  .p2-form{scroll-margin-top:8px}
+}
 /* 폰: 위에 붙는 카드 더미를 낮게(분류판이 보이도록). 안내 줄은 빼고 앞뒤 버튼은 화살표만 */
 @media (max-width:599px){
   .deck{padding:8px 10px;margin:0 -6px 10px}
