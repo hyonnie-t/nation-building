@@ -686,17 +686,20 @@ function saveEditSnapshot() {
   const f = {};
   P2_FIELDS().forEach(id => { f[id] = $(id).value; });
   try {
-    localStorage.setItem(editKey(), JSON.stringify({ ts: Date.now(), f, region: S.region, compare: S.compare, sym: S.sym, stars: S.stars, reasonStat: S.reasonStat }));
+    localStorage.setItem(editKey(), JSON.stringify({ ts: Date.now(), name: S.name, f, region: S.region, compare: S.compare, sym: S.sym, stars: S.stars, reasonStat: S.reasonStat }));
   } catch (e) { /* 저장소가 막히면 메모리만 */ }
 }
 
 function readEditSnapshot() {
   try {
     const v = JSON.parse(localStorage.getItem(editKey()) || "null");
-    return v && v.f && Date.now() - (v.ts || 0) <= 7 * 864e5 ? v : null;
-  } catch (e) { return null; }
+    if (!v) return null;
+    const ok = v.f && typeof v.f === "object" && v.name === S.name && v.stars && typeof v.stars === "object"
+      && starSum(v.stars) <= RAID.starTotal && Date.now() - (v.ts || 0) <= 7 * 864e5;
+    if (!ok) clearEditSnapshot(); // 깨졌거나 오래됐거나 이름이 다르면 쓰지 않고 지운다(공용 태블릿)
+    return ok ? v : null;
+  } catch (e) { clearEditSnapshot(); return null; }
 }
-
 function clearEditSnapshot() {
   try { localStorage.removeItem(editKey()); } catch (e) { /* 무시 */ }
 }
@@ -994,7 +997,7 @@ async function saveCardImage() {
   const a = el("a");
   a.href = url; a.download = "역사카드_" + S.sid + ".png";
   document.body.appendChild(a); a.click(); a.remove();
-  $("outMsg").textContent = "카드 그림을 저장했어. 패들렛에 그림을 올리고 복사한 글도 붙여 줘.";
+  $("outMsg").textContent = "카드 그림을 저장했어. 패들렛에 그림을 올리고 복사한 글도 붙여 줘. 저장이 안 됐으면 아래로 내려서 그림을 길게 눌러 줘.";
 }
 
 /* ══ 도트 캐릭터 그리기 ══ img/<id>.png(2026-10-30, 힉스필드로 만든 뒤 격자 축소한 128px 도트)가 있으면 그 그림, 없으면 data.js 격자.

@@ -165,8 +165,13 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
   .p2-side{grid-area:side}
   .p2-form{grid-area:form}
   .p2-out{grid-area:out;position:sticky;top:8px;max-height:calc(100vh - 16px);overflow-y:auto;scroll-margin-top:8px}
-  .p2-out .btn-row{position:sticky;bottom:-20px;background:var(--page);padding:0 0 12px;margin-bottom:-12px;z-index:2} /* 카드가 길어도 제출 버튼은 늘 보이게 */
-  .p2-out .btn-row .btn{padding:8px 10px;font-size:1rem}
+  .out-actions{position:sticky;bottom:-20px;margin:0 -20px -20px;padding:4px 20px 12px;background:var(--page);border-top:1px solid var(--line);z-index:2} /* 카드가 길어도 제출 버튼·안내·패들렛 버튼은 늘 보이게 */
+  .out-actions .btn-row{gap:8px}
+  .out-actions .btn-row .btn{padding:6px 8px;font-size:1rem;min-height:46px;margin-top:6px}
+  .out-actions .note{margin-top:6px;line-height:1.45}
+  .out-actions .padlet-box{margin-top:6px;padding:0;border:0;background:none}
+  .out-actions .padlet-guide{margin:0;font-size:16px;line-height:1.45}
+  .out-actions .btn.wide{min-height:46px;margin-top:6px}
   .p2-form .opt-grid{grid-template-columns:repeat(3,1fr)}
   .p2-form{scroll-margin-top:8px}
 }
