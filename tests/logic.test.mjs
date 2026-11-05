@@ -72,6 +72,55 @@ t("occupant: 지역 칸 주인 찾기, 남는 카드 칸은 늘 빈 것으로", 
   assert.equal(L.occupant({ x1: "trap" }, "trap"), "");
 });
 
+t("shuffledIds: 2학년 학번 240개에서 맨 앞 카드가 몰리지 않고 이웃 학번끼리 순서가 다르다", () => {
+  const ids = CARDS.concat(TRAPS).map(k => k.id);
+  const sids = [];
+  for (let b = 1; b <= 8; b++) for (let i = 1; i <= 30; i++) sids.push("2" + String(b).padStart(2, "0") + String(i).padStart(2, "0"));
+  const orders = sids.map(s => L.shuffledIds(ids, s));
+  assert.equal(new Set(orders.map(o => o.join())).size, sids.length);
+  const first = {};
+  orders.forEach(o => { first[o[0]] = (first[o[0]] || 0) + 1; });
+  assert.ok(Object.keys(first).length >= 20, "맨 앞 카드 종류 " + Object.keys(first).length);
+  assert.ok(Math.max(...Object.values(first)) <= 25, "맨 앞 카드 최다 " + Math.max(...Object.values(first)));
+  let same = 0, pairs = 0;
+  for (let i = 0; i + 1 < orders.length; i++) { same += orders[i].filter((x, j) => x === orders[i + 1][j]).length; pairs++; }
+  assert.ok(same / pairs < 1.6, "이웃 학번 같은 자리 평균 " + same / pairs);
+});
+
+t("deckWindow: 맨 앞 카드가 놓여도 처음으로 돌아가지 않고 다음 카드가 채운다", () => {
+  const o = ["a", "b", "c", "d", "e", "f"];
+  assert.equal(J(L.deckWindow(o, {}, "c", 3)), J(["c", "d", "e"]));
+  assert.equal(J(L.deckWindow(o, { c: "x" }, "c", 3)), J(["d", "e", "f"]));
+  assert.equal(J(L.deckWindow(o, { d: "x" }, "c", 3)), J(["c", "e", "f"]));
+  assert.equal(J(L.deckWindow(o, {}, "f", 3)), J(["f", "a", "b"]), "끝에 닿으면 앞으로 이어진다");
+  assert.equal(J(L.deckWindow(o, { a: 1, b: 1, c: 1, d: 1, e: 1 }, "c", 3)), J(["f"]));
+  assert.equal(J(L.deckWindow(o, {}, "", 2)), J(["a", "b"]), "맨 앞 카드가 없으면 처음부터");
+});
+
+t("deckPageTop: 다음·앞으로 묶음이 넘어가고, 다음 뒤 앞이면 제자리, 남은 카드가 n장 이하면 그대로", () => {
+  const o = ["a", "b", "c", "d", "e", "f", "g"];
+  assert.equal(L.deckPageTop(o, {}, "a", 3, 1), "d");
+  assert.equal(L.deckPageTop(o, {}, "d", 3, -1), "a");
+  assert.equal(L.deckPageTop(o, { b: "x" }, "a", 3, 1), "e", "놓인 카드는 건너뛴다");
+  assert.equal(L.deckPageTop(o, { b: "x" }, "e", 3, -1), "a");
+  ["a", "c", "f"].forEach(top => assert.equal(L.deckPageTop(o, {}, L.deckPageTop(o, {}, top, 3, 1), 3, -1), top));
+  assert.equal(L.deckPageTop(["a", "b", "c"], {}, "a", 3, 1), "a");
+  assert.equal(L.deckPageTop(o, { a: 1, b: 1, c: 1, d: 1 }, "e", 3, -1), "e");
+  const seen = new Set();
+  let top = "a";
+  for (let i = 0; i < 7; i++) { L.deckWindow(o, {}, top, 3).forEach(id => seen.add(id)); top = L.deckPageTop(o, {}, top, 3, 1); }
+  assert.equal(seen.size, 7, "다음만 눌러도 모든 카드를 볼 수 있다");
+});
+
+t("moveCard: 빈칸으로 옮기기, 판 위 카드끼리 자리 바꾸기, 더미 카드가 칸을 차지하면 원래 카드는 더미로, 남는 칸", () => {
+  assert.equal(J(L.moveCard({ a: "iran:a" }, "a", "iran:b")), J({ a: "iran:b" }));
+  assert.equal(J(L.moveCard({ a: "iran:a", b: "iran:b" }, "a", "iran:b")), J({ a: "iran:b", b: "iran:a" }));
+  assert.equal(J(L.moveCard({ b: "iran:b" }, "a", "iran:b")), J({ a: "iran:b" }));
+  assert.equal(J(L.moveCard({ a: "iran:a" }, "a", "iran:a")), J({ a: "iran:a" }));
+  assert.equal(J(L.moveCard({ a: "trap", b: "iran:b" }, "a", "iran:b")), J({ a: "iran:b", b: "trap" }));
+  assert.equal(J(L.moveCard({ a: "iran:a", b: "trap" }, "a", "trap")), J({ a: "trap", b: "trap" }), "남는 칸은 여러 장");
+});
+
 t("shuffledIds: 같은 시드면 같은 순서, 원소는 그대로", () => {
   const ids = CARDS.map(k => k.id);
   const a = L.shuffledIds(ids, "20512"), b = L.shuffledIds(ids, "20512");
