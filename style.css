@@ -65,8 +65,19 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .deck{position:sticky;top:0;z-index:5;background:var(--page);border:1px solid var(--line);border-radius:5px;padding:12px 14px;margin-bottom:12px;box-shadow:0 2px 6px rgba(34,35,58,.12)}
 .deck-head{display:flex;justify-content:space-between;align-items:baseline;font:700 16px var(--sans);color:var(--indigo-deep)}
 .deck-count{color:var(--saffron-ink)}
-.deck-card{margin-top:8px;padding:12px 14px;border:1px solid #d7b06f;border-left:5px solid var(--saffron);border-radius:4px;background:var(--saffron-wash);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
-.deck-card.lifted{opacity:.45}
+.deck-cards{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-top:8px}
+.deck-card{padding:10px 12px;border:1px solid var(--line);border-left:5px solid #d7b06f;border-radius:4px;background:#fff;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;transition:background-color .15s,border-color .15s,box-shadow .15s}
+.deck-card.sel{border-color:var(--saffron);background:var(--saffron-wash);box-shadow:0 0 0 2px var(--saffron)}
+.deck-card.sel .card-page::before{content:"✔ 고름";float:left;font-weight:700;color:var(--saffron-ink)}
+.deck-card.in{animation:deckIn .2s ease-out}
+@keyframes deckIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.deck-card.lifted,.placed.lifted{opacity:.45}
+.deck-body{position:relative;min-height:130px}
+/* 판 위 카드를 집으면 안내가 카드 위에 겹친다. 더미 높이가 그대로라 아래 칸이 밀리지 않는다. */
+.deck-pick{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:8px 10px;border:2px solid var(--saffron);border-radius:4px;background:var(--saffron-wash)}
+.deck-pick p{margin:0;font:16px/1.45 var(--sans);word-break:keep-all}
+.deck-pick-btns{display:grid;grid-template-columns:1fr auto;gap:6px}
+.deck-pick[hidden]{display:none}
 .deck-card.empty{border-color:var(--line);border-left-color:var(--jade);background:var(--jade-wash);cursor:default}
 .deck-card p{margin:0}
 .card-text{font:16px/1.65 var(--serif)}
@@ -83,6 +94,9 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 .cell::before{content:attr(data-col);position:absolute;top:3px;left:10px;font:500 16px/1.2 var(--sans);color:var(--muted)}
 .cell:hover,.cell.hover,.trap.hover{border-color:var(--saffron);background:var(--saffron-wash)}
 .cell:has(.placed){border-style:solid;border-color:#c6c8d6;background:#fff}
+.placed{cursor:grab;user-select:none;-webkit-user-select:none;border-radius:3px;transition:transform .15s,box-shadow .15s}
+.placed.picked{outline:3px solid var(--saffron);outline-offset:1px;background:var(--saffron-wash);box-shadow:0 4px 10px rgba(34,35,58,.2);transform:translateY(-2px)}
+.locked .placed{cursor:default}
 .placed p{margin:0}
 .placed .card-page{font-size:16px}
 .cell.wrong,.trap .placed.wrong{border:2px solid var(--alert);background:#fbecea}
@@ -129,7 +143,8 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 @media (min-width:900px){
   body.wide .page{padding:12px 24px 72px}
   .board-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
-  .deck{top:12px;margin-bottom:0}
+  .deck{top:12px;margin-bottom:0;max-height:calc(100vh - 24px);overflow-y:auto}
+  .deck-cards{grid-auto-flow:row}
   .board-cols{display:grid;grid-template-columns:118px repeat(3,1fr);gap:8px;padding:0 12px 4px;font:700 16px var(--sans);color:var(--indigo-deep);text-align:center}
   .region{grid-template-columns:118px repeat(3,1fr);align-items:stretch}
   .rname{border-bottom:0;border-right:1px solid var(--line);padding:0 8px 0 0;display:flex;align-items:center}
@@ -178,8 +193,12 @@ input:focus,textarea:focus,button:focus-visible,summary:focus-visible,.opt:focus
 /* 폰: 위에 붙는 카드 더미를 낮게(분류판이 보이도록). 안내 줄은 빼고 앞뒤 버튼은 화살표만 */
 @media (max-width:599px){
   .deck{padding:8px 10px;margin:0 -6px 10px}
-  .deck-card{margin-top:6px;padding:8px 10px}
+  .deck-cards{margin-top:6px;gap:6px}
+  .deck-card{padding:6px 8px;border-left-width:3px}
+  .deck-card .card-text{line-height:1.4}
   .deck-card .card-page{margin-top:0!important}
+  .deck-card .pw{display:none}
+  .deck-card.sel .card-page::before{content:"✔"}
   .deck-nav{margin-top:6px}
   .deck-nav .btn{min-height:40px}
   .deck-tip{display:none}
@@ -397,7 +416,7 @@ body.eboard .msg-sub{font-size:20px}
 body.eboard .skill-box .btn{min-height:76px;font-size:26px}
 body.eboard .ctrl-q{font-size:26px}
 body.eboard .f-info .hp-num{font-size:18px}
-@media (prefers-reduced-motion:reduce){.boss-sprite,.fighter.cur .sprite{animation:none}}
+@media (prefers-reduced-motion:reduce){.boss-sprite,.fighter.cur .sprite,.deck-card.in{animation:none}.deck-card,.placed{transition:none}.placed.picked{transform:none}}
 @media (max-width:1839px){ /* 1920 전자칠판이 아닌 화면에서 최종 보스전을 열었을 때 차례 상자가 모둠 8명 줄과 겹치지 않게 */
   body.eboard .turn-ui{bottom:auto;top:14px;right:auto;left:450px;width:300px;font-size:18px}
 }

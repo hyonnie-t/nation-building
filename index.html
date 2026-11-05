@@ -45,12 +45,21 @@
     <div class="board-wrap">
       <aside class="deck" aria-label="단서 카드 더미">
         <div class="deck-head"><span>단서 카드</span><span id="deckCount" class="deck-count"></span></div>
-        <div id="deckCard" class="deck-card" tabindex="0"></div>
         <div class="deck-nav">
-          <button id="deckPrev" class="btn btn-ghost btn-sm" aria-label="앞 카드">◀ 앞</button>
-          <button id="deckNext" class="btn btn-ghost btn-sm" aria-label="다음 카드">다음 ▶</button>
+          <button id="deckPrev" class="btn btn-ghost btn-sm" aria-label="앞 카드 묶음">◀ 앞</button>
+          <button id="deckNext" class="btn btn-ghost btn-sm" aria-label="다음 카드 묶음">다음 ▶</button>
         </div>
-        <p class="deck-tip note">이 카드를 놓을 칸을 눌러.</p>
+        <div class="deck-body">
+          <div id="deckCards" class="deck-cards"></div>
+          <div id="deckPick" class="deck-pick" role="status" hidden>
+            <p>옮길 칸을 눌러. 카드가 있는 칸을 누르면 서로 자리가 바뀌어.</p>
+            <div class="deck-pick-btns">
+              <button id="deckReturn" class="btn btn-ghost btn-sm">단서 카드로 돌려놓기</button>
+              <button id="deckCancel" class="btn btn-ghost btn-sm">취소</button>
+            </div>
+          </div>
+        </div>
+        <p class="deck-tip note">카드를 고르고 놓을 칸을 눌러.</p>
       </aside>
       <div class="board-side">
         <div class="board-cols" aria-hidden="true">

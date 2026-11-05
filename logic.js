@@ -31,14 +31,55 @@ function occupant(placed, key) {
 /* 학번 시드로 늘 같은 순서로 섞는다(새로고침해도 카드 순서가 안 바뀐다) */
 function shuffledIds(ids, seed) {
   const a = ids.slice();
-  let s = 0;
-  String(seed).split("").forEach(ch => { s = (s * 31 + ch.charCodeAt(0)) >>> 0; });
+  let h = 2166136261; // 학번 글자를 고루 섞는다(FNV-1a). 이웃 학번이 비슷한 순서가 되지 않게
+  String(seed).split("").forEach(ch => { h = Math.imul(h ^ ch.charCodeAt(0), 16777619); });
+  const rng = seeded(h);
   for (let i = a.length - 1; i > 0; i--) {
-    s = (s * 1103515245 + 12345) >>> 0;
-    const j = s % (i + 1);
+    const j = Math.floor(rng() * (i + 1));
     const t = a[i]; a[i] = a[j]; a[j] = t;
   }
   return a;
+}
+
+/* 더미에서 지금 보이는 카드 n장. top(맨 앞 카드 id)부터 섞인 순서대로 돌며 아직 안 놓은 카드만 고른다.
+ * top이 놓였어도 그다음 카드부터 이어지므로, 카드를 놓아도 보던 자리에서 처음으로 돌아가지 않는다. */
+function deckWindow(order, placed, top, n) {
+  const start = Math.max(0, order.indexOf(top));
+  const out = [];
+  for (let i = 0; i < order.length && out.length < n; i++) {
+    const id = order[(start + i) % order.length];
+    if (!placed[id]) out.push(id);
+  }
+  return out;
+}
+
+/* ◀▶로 묶음을 넘길 때 새 맨 앞 카드. dir은 1(다음) 또는 -1(앞). 남은 카드가 n장 이하면 그대로 둔다. */
+function deckPageTop(order, placed, top, n, dir) {
+  const len = order.length;
+  const start = Math.max(0, order.indexOf(top));
+  const left = order.filter(id => !placed[id]).length;
+  if (left <= n) return top;
+  let seen = 0;
+  for (let i = 0; i < len; i++) {
+    const at = dir > 0 ? (start + i) % len : (start - 1 - i + len * 2) % len;
+    if (placed[order[at]]) continue;
+    seen++;
+    if (dir > 0 && seen === n + 1) return order[at];
+    if (dir < 0 && seen === n) return order[at];
+  }
+  return top;
+}
+
+/* 카드를 칸으로 옮긴다. 다른 카드가 있는 칸이면, 판 위의 카드끼리는 자리를 바꾸고 더미에서 온 카드면 원래 카드가 더미로 돌아간다. */
+function moveCard(placed, id, key) {
+  const from = placed[id];
+  const other = occupant(placed, key);
+  if (other && other !== id) {
+    if (from) placed[other] = from;
+    else delete placed[other];
+  }
+  placed[id] = key;
+  return placed;
 }
 
 /* 2부 글자 수: 칸별 글자 수와 합계(공백 포함, 앞뒤 공백 제외) */
@@ -354,5 +395,5 @@ function deadlineText(firstAt, hours) {
   return (d.getMonth() + 1) + "월 " + d.getDate() + "일 " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시" + (m ? " " + m + "분" : "");
 }
 
-if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
+if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
   dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };

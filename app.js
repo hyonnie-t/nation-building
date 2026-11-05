@@ -12,12 +12,12 @@ const CONFIG = {
 
 const S = {
   part: 1, sid: "", name: "", grade: 0, ban: 0, preview: false,
-  placed: {}, cur: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
+  placed: {}, cur: "", curIdx: 0, deckTop: "", picked: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
   final: false, members: [], raid: null, msgs: [], modalOpen: false, quiz: null, quizUsed: [], basicFor: null, basicRegion: "", raidDone: false,
   copied: false, sending: false, submitted: false, everSubmitted: false, firstAt: 0, padletUrl: "", padletLoading: false
 };
-const SAVE_KEYS = { 1: ["placed", "cur", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
+const SAVE_KEYS = { 1: ["placed", "cur", "deckTop", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
 const W_IDS = ["hit", "w1", "w2", "r_top", "w3", "w4"];
 const PG_IDS = ["pgHit", "pg1", "pg2", "p_top", "pg3"];
 
@@ -151,38 +151,81 @@ function startApp() {
 }
 
 /* ══ 1부: 단서 카드 분류판 ══ */
-function deckIds() {
-  const order = shuffledIds(ALL_CARDS().map(k => k.id), S.sid || "seed");
-  return order.filter(id => !S.placed[id]);
-}
+const deckOrder = () => shuffledIds(ALL_CARDS().map(k => k.id), S.sid || "seed");
+/* 한 번에 보이는 카드 수: 폰·낮은 화면은 2장(더미가 위에 붙어 칸을 가리지 않게), 그 밖에는 3장 */
+const SMALL_DECK = window.matchMedia("(max-width:599px), (max-height:700px)");
+const deckSize = () => SMALL_DECK.matches ? 2 : 3;
 
 function cardById(id) { return byId(ALL_CARDS(), id); }
 
+let deckShown = [];
 function renderDeck() {
-  const left = deckIds();
-  if (left.length && left.indexOf(S.cur) < 0) S.cur = left[0];
-  if (!left.length) S.cur = "";
-  $("deckCount").textContent = left.length ? "남은 카드 " + left.length + "장" : "다 놓았어";
-  const box = $("deckCard");
+  const order = deckOrder();
+  const left = order.filter(id => !S.placed[id]).length;
+  const win = deckWindow(order, S.placed, S.deckTop, deckSize());
+  if (win.indexOf(S.cur) < 0) S.cur = win[Math.min(S.curIdx, win.length - 1)] || ""; // 카드를 놓으면 옆 카드가 이어받는다
+  S.curIdx = Math.max(0, win.indexOf(S.cur));
+  $("deckCount").textContent = left ? "남은 카드 " + left + "장" : "다 놓았어";
+  const box = $("deckCards");
   box.innerHTML = "";
-  if (!S.cur) {
-    box.classList.add("empty");
-    box.appendChild(el("p", "", S.done1 ? "분류판을 다 맞췄어." : "카드를 모두 놓았어. 아래 «맞춰 보기»를 눌러 봐."));
-  } else {
-    box.classList.remove("empty");
-    const k = cardById(S.cur);
-    box.appendChild(el("p", "card-text", k.t));
-    box.appendChild(el("p", "card-page", "교과서 " + k.p + "쪽"));
+  if (!win.length) {
+    const none = el("div", "deck-card empty");
+    none.appendChild(el("p", "", S.done1 ? "분류판을 다 맞췄어." : "카드를 모두 놓았어. 아래 «맞춰 보기»를 눌러 봐."));
+    box.appendChild(none);
   }
-  $("deckPrev").disabled = $("deckNext").disabled = left.length < 2;
+  win.forEach(id => {
+    const k = cardById(id);
+    const c = el("div", "deck-card" + (deckShown.indexOf(id) < 0 ? " in" : ""));
+    c.dataset.card = id;
+    c.tabIndex = 0;
+    c.setAttribute("role", "button");
+    c.appendChild(el("p", "card-text", k.t));
+    const page = el("p", "card-page");
+    page.appendChild(el("span", "pw", "교과서 "));
+    page.appendChild(document.createTextNode(k.p + "쪽"));
+    c.appendChild(page);
+    box.appendChild(c);
+  });
+  deckShown = win;
+  $("deckPrev").disabled = $("deckNext").disabled = left <= win.length;
+  markSelection();
+}
+
+/* 고른 카드 표시만 바꾼다. 다시 그리지 않으므로 «맞춰 보기»의 빨간 표시가 남는다. */
+function markSelection() {
+  document.querySelectorAll(".deck-card[data-card]").forEach(c => {
+    const on = !S.picked && c.dataset.card === S.cur;
+    c.classList.toggle("sel", on);
+    c.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll(".placed").forEach(c => c.classList.toggle("picked", c.dataset.card === S.picked));
+  $("deckPick").hidden = !S.picked;
+}
+
+function selectDeckCard(id) {
+  if (S.done1) return;
+  S.picked = "";
+  S.cur = id;
+  S.curIdx = deckWindow(deckOrder(), S.placed, S.deckTop, deckSize()).indexOf(id);
+  save(); markSelection();
 }
 
 function stepDeck(d) {
-  const left = deckIds();
-  if (left.length < 2) return;
-  const i = left.indexOf(S.cur);
-  S.cur = left[(i + d + left.length) % left.length];
+  const order = deckOrder();
+  S.deckTop = deckPageTop(order, S.placed, S.deckTop || order[0], deckSize(), d);
+  S.cur = ""; S.curIdx = 0;
   save(); renderDeck();
+}
+
+/* 집어 든 판 위 카드를 더미로 돌려놓는다. 돌아온 카드가 묶음 맨 앞에 보인다. */
+function returnPicked() {
+  if (!S.picked || S.done1) return;
+  const id = S.picked;
+  clearMarks();
+  delete S.placed[id];
+  S.picked = "";
+  S.deckTop = id; S.cur = id; S.curIdx = 0;
+  save(); renderBoard();
 }
 
 function placedCardEl(id) {
@@ -229,51 +272,56 @@ function clearMarks() {
   $("boardMsg").textContent = "";
 }
 
-/* 칸(또는 남는 카드 칸)을 눌렀을 때: 놓인 카드를 누르면 빼고, 빈칸이면 지금 카드를 놓는다 */
+/* 칸(또는 남는 카드 칸)을 눌렀을 때.
+ * 카드를 집어 든 상태: 집은 카드를 다시 누르면 내려놓고, 다른 곳을 누르면 그리로 옮긴다(카드가 있는 칸이면 자리 바꾸기).
+ * 아무것도 안 집은 상태: 놓인 카드를 누르면 집어 들고, 빈칸을 누르면 더미에서 고른 카드를 놓는다. */
 function tapSlot(key, cardEl) {
   if (S.done1) return;
-  clearMarks();
-  if (cardEl) { // 놓인 카드 빼기 → 더미로 돌아가 지금 카드가 된다
-    const id = cardEl.dataset.card;
-    delete S.placed[id];
-    S.cur = id;
-    save(); renderBoard();
+  const id = cardEl ? cardEl.dataset.card : "";
+  if (S.picked) {
+    if (id === S.picked) { S.picked = ""; markSelection(); return; }
+    if (id && key === TRAP_SLOT && S.placed[S.picked] === TRAP_SLOT) { S.picked = id; markSelection(); return; } // 남는 칸 안에서는 다른 카드로 바꿔 집기
+    putCard(S.picked, key);
     return;
   }
+  if (id) { S.picked = id; markSelection(); return; }
   if (!S.cur) { toast("놓을 카드가 없어."); return; }
   putCard(S.cur, key);
 }
 
 function putCard(id, key) {
   if (S.done1) return;
+  S.picked = "";
+  if (S.placed[id] === key) { markSelection(); return; }
   clearMarks();
-  const old = occupant(S.placed, key);
-  if (old && old !== id) delete S.placed[old]; // 이미 찬 칸이면 원래 카드는 더미로 돌아간다
-  S.placed[id] = key;
-  S.cur = "";
+  moveCard(S.placed, id, key);
+  if (S.cur === id) S.cur = ""; // renderDeck이 같은 자리의 다음 카드를 고른다
   save(); renderBoard();
 }
 
 function boardClick(e) {
   if (Date.now() - drag.droppedAt < 300) return; // 끌어다 놓은 직후의 click은 무시
-  const cardEl = e.target.closest(".placed");
   const slot = e.target.closest(".cell, #trapSlot");
   if (!slot) return;
+  const cardEl = e.target.closest(".placed") || (slot.classList.contains("cell") ? slot.querySelector(".placed") : null); // 키보드로 칸에서 Enter를 눌러도 같게
   tapSlot(slot.dataset.key, cardEl);
 }
 
 /* 끌기: 손가락·마우스 모두 pointer 이벤트로. 조금이라도 움직여야 끌기로 본다(IR-simulator와 같은 방식). */
-const drag = { id: "", x: 0, y: 0, ghost: null, moved: false, over: null, droppedAt: 0 };
+const drag = { id: "", el: null, x: 0, y: 0, ghost: null, moved: false, over: null, droppedAt: 0 };
 
 function dragStart(e) {
-  if (!S.cur || S.done1) return;
+  if (S.done1) return;
   if (e.button !== undefined && e.button !== 0) return;
-  drag.id = S.cur; drag.x = e.clientX; drag.y = e.clientY; drag.moved = false; drag.over = null;
-  const t = e.currentTarget;
-  t.setPointerCapture && t.setPointerCapture(e.pointerId);
-  t.addEventListener("pointermove", dragMove);
-  t.addEventListener("pointerup", dragEnd);
-  t.addEventListener("pointercancel", dragEnd);
+  const t = e.target.closest(".deck-card[data-card], .placed");
+  if (!t) return;
+  // 판 위 카드는 마우스로만 끈다. 손가락으로는 판을 스크롤해야 하므로 눌러서 옮긴다.
+  if (t.classList.contains("placed") && e.pointerType !== "mouse") return;
+  drag.id = t.dataset.card; drag.el = t; drag.x = e.clientX; drag.y = e.clientY; drag.moved = false; drag.over = null;
+  // 문서에서 받는다. 마우스가 카드 밖으로 빠르게 나가도 놓치지 않고, 카드 안 낱말 풀이의 click도 낱말에 그대로 닿는다.
+  document.addEventListener("pointermove", dragMove);
+  document.addEventListener("pointerup", dragEnd);
+  document.addEventListener("pointercancel", dragEnd);
 }
 
 function dragMove(e) {
@@ -283,7 +331,7 @@ function dragMove(e) {
     drag.moved = true;
     drag.ghost = el("div", "ghost", cardById(drag.id).t);
     document.body.appendChild(drag.ghost);
-    e.currentTarget.classList.add("lifted");
+    drag.el.classList.add("lifted");
   }
   e.preventDefault();
   drag.ghost.style.left = e.clientX + "px";
@@ -300,22 +348,27 @@ function dragMove(e) {
 }
 
 function dragEnd(e) {
-  const t = e.currentTarget;
-  t.removeEventListener("pointermove", dragMove);
-  t.removeEventListener("pointerup", dragEnd);
-  t.removeEventListener("pointercancel", dragEnd);
+  const t = drag.el;
+  document.removeEventListener("pointermove", dragMove);
+  document.removeEventListener("pointerup", dragEnd);
+  document.removeEventListener("pointercancel", dragEnd);
   const id = drag.id, moved = drag.moved, over = drag.over;
   if (drag.ghost) drag.ghost.remove();
   if (over) over.classList.remove("hover");
-  drag.id = ""; drag.ghost = null; drag.over = null;
+  drag.id = ""; drag.el = null; drag.ghost = null; drag.over = null;
   t.classList.remove("lifted");
-  if (!id || !moved) return;
+  if (!id) return;
+  if (!moved) { // 끌지 않고 누르기만 했으면 더미 카드 고르기(판 위 카드는 click이 맡는다)
+    if (e.type === "pointerup" && t.classList.contains("deck-card")) selectDeckCard(id);
+    return;
+  }
   drag.droppedAt = Date.now();
   if (over && e.type === "pointerup") putCard(id, over.dataset.key);
 }
 
 function checkBoardNow() {
   if (S.done1) return;
+  S.picked = ""; markSelection();
   const res = checkBoard(S.placed, CARDS, TRAPS);
   if (!Object.keys(S.placed).length) { $("boardMsg").textContent = PART1.emptyMsg(res.empty); return; }
   S.tries++; save();
@@ -1542,7 +1595,15 @@ function init() {
   if (S.final) { show("p3"); loadFirstMember(); } // 전자칠판은 학번 입력 없이 바로 대표 카드 불러오기
   $("deckPrev").addEventListener("click", () => stepDeck(-1));
   $("deckNext").addEventListener("click", () => stepDeck(1));
-  $("deckCard").addEventListener("pointerdown", dragStart);
+  $("deckReturn").addEventListener("click", returnPicked);
+  $("deckCancel").addEventListener("click", () => { S.picked = ""; markSelection(); });
+  [$("deckCards"), $("board"), $("trapSlot")].forEach(b => b.addEventListener("pointerdown", dragStart));
+  $("deckCards").addEventListener("keydown", e => {
+    const c = e.target.closest(".deck-card[data-card]");
+    if (!c || e.target !== c || (e.key !== "Enter" && e.key !== " ")) return; // 카드 안 낱말 버튼의 Enter는 낱말 풀이로 보낸다
+    e.preventDefault(); selectDeckCard(c.dataset.card);
+  });
+  SMALL_DECK.addEventListener("change", () => { if (S.part === 1) renderDeck(); });
   $("board").addEventListener("click", boardClick);
   $("trapSlot").addEventListener("click", boardClick);
   [$("board"), $("trapSlot")].forEach(b => b.addEventListener("keydown", e => {
