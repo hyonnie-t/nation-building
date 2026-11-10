@@ -637,7 +637,8 @@ function renderSummary() {
   $("bodyCount").textContent = "내가 쓴 글 " + n + "자 (지역·쪽수·별 제외)" + (short ? " — " + PART2.totalMin + "자 이상 써 보자." : "");
   $("bodyCount").classList.toggle("warn", short);
   $("submitBtn").disabled = S.submitted || S.sending;
-  $("submitBtn").textContent = S.submitted ? "제출 완료" : (S.everSubmitted ? PART2.resubmitBtn : "제출");
+  $("submitBtn").textContent = S.submitted ? "제출 완료" : (S.everSubmitted ? PART2.resubmitBtn : PART2.submitBtn);
+  $("copyBtn").hidden = !S.submitted; // 고치는 중에는 옛 글이 복사되지 않게 숨긴다
   $("editBtn").hidden = !(S.submitted && canEdit());
   saveEditSnapshot();
   renderPadlet();
@@ -645,7 +646,9 @@ function renderSummary() {
 
 function renderPadlet() {
   const a = $("padletBtn");
-  if (S.padletUrl) {
+  if (!S.everSubmitted) {
+    a.hidden = true; $("padletMsg").textContent = "제출하면 패들렛 버튼이 열려.";
+  } else if (S.padletUrl) {
     a.href = S.padletUrl; a.hidden = false; $("padletMsg").textContent = "";
   } else {
     a.hidden = true; $("padletMsg").textContent = S.padletLoading ? "우리 반 패들렛 링크를 불러오는 중이야…" : "패들렛 링크는 선생님이 알려 준 곳을 써 줘.";
@@ -682,6 +685,7 @@ async function submitPart2() {
   if (used !== RAID.starTotal && !skip() && !confirm(PART2.nineConfirm(used))) return;
   const total = counts().total;
   if (total < PART2.totalMin && !skip() && !confirm("아직 " + total + "자야. " + PART2.totalMin + "자보다 짧은데 그래도 제출할까?")) return;
+  const copyP = Promise.race([copyText(buildOutText()), new Promise(r => setTimeout(() => r(false), 3000))]); // 클릭 직후에 복사를 먼저 시작해야 브라우저가 허용한다
   S.sending = true; $("submitBtn").disabled = true; $("submitBtn").textContent = "보내는 중…";
   const card = cardFromForm();
   const payload = {
@@ -695,10 +699,11 @@ async function submitPart2() {
   try {
     await postToSheet(payload);
   } catch (e) {
-    $("outErr").textContent = e.locked ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘.";
+    $("outErr").textContent = e.locked ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘. (패들렛은 제출한 뒤에 열려.)";
     S.sending = false; renderSummary();
     return;
   }
+  S.copied = await copyP;
   const again = S.everSubmitted;
   S.sending = false; S.submitted = true; S.everSubmitted = true;
   if (!again) S.firstAt = Date.now(); // 다시 낼 때는 기한을 늘리지 않는다
@@ -708,7 +713,7 @@ async function submitPart2() {
     clearEditSnapshot();
   }
   lockPart2();
-  $("outMsg").textContent = S.preview ? "미리보기라 저장하지 않았어." : (again ? PART2.resubmittedMsg : PART2.submittedMsg)(editUntil());
+  $("outMsg").textContent = S.preview ? "미리보기라 저장하지 않았어." : (S.copied ? PART2.copiedNote : PART2.copyFailNote) + (again ? PART2.resubmittedMsg : PART2.submittedMsg)(editUntil());
 }
 
 const P2_FIELDS = () => W_IDS.concat(PG_IDS, ["mvName"]);
