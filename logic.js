@@ -170,9 +170,11 @@ function parseCardText(text, regions, statDefs) {
   if ((v = after("약점: ")) != null) [c.w2, c.pg2] = splitPage(v);
   statDefs.forEach(d => {
     /* 2026-11-12: 능력치 이름을 바꿔도 옛 이름(d.old)으로 낸 카드를 읽는다 */
-    const heads = [d.name].concat(d.old || []).map(nm => d.icon + " " + nm + " ★");
+    /* 이모지 변형 선택자(FE0F)가 빠지거나 줄 끝에 공백이 붙어도 읽는다(2026-11-12 검토) */
+    const nf = s => s.replace(/️/g, "");
+    const heads = [d.name].concat(d.old || []).map(nm => nf(d.icon + " " + nm + " ★"));
     let head = "";
-    const l = lines.find(x => heads.some(h => (x.indexOf(h) === 0 ? ((head = h), true) : false)));
+    const l = lines.map(x => nf(x).trimEnd()).find(x => heads.some(h => (x.indexOf(h) === 0 ? ((head = h), true) : false)));
     if (!l) { c.stats[d.id] = { n: 0, r: "", p: "" }; return; }
     const m = l.slice(head.length).match(/^(\d)(?::\s?(.*))?$/);
     const [r, p] = splitPage(m && m[2] ? m[2] : "");

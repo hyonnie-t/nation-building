@@ -186,6 +186,14 @@ t("옛 이름 «안의 단결력»으로 낸 카드도 3부가 읽는다(2026-11
   assert.equal(J(back.stats.unity), J({ n: 5, r: "옛 근거", p: "183" }));
 });
 
+t("능력치 줄 끝 공백·🛡 변형 선택자 빠짐도 읽는다(2026-11-12 검토)", () => {
+  const txt = "[역사 카드] 타이 🐘 · 라이벌 청\n⚡ 개혁 추진력 ★3 \n🛡 외세 방어력 ★4: 독립 유지 (176쪽)  \n🤝 나라 안 단결력 ★2\r";
+  const c = L.parseCardText(txt, REGIONS, ctx.STATS);
+  assert.equal(c.stats.lead.n, 3);
+  assert.equal(J(c.stats.guard), J({ n: 4, r: "독립 유지", p: "176" }));
+  assert.equal(c.stats.unity.n, 2);
+});
+
 t("별 9개: 합계·남은 별·넘기기 막기·가장 많이 준 능력치(동점은 여럿)", () => {
   assert.equal(ctx.RAID.starTotal, 9);
   assert.equal(L.starsLeft({ lead: 2, guard: 3, unity: 0 }), 4);
