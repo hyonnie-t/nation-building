@@ -106,7 +106,7 @@
       el.id = 'draftGuardNote';
       el.setAttribute('role', 'status');
       el.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99998;' +
-        'max-width:calc(100vw - 32px);padding:12px 18px;border-radius:8px;background:#2B3A55;color:#fff;' +
+        'max-width:calc(100vw - 32px);padding:8px 16px;border-radius:8px;background:#2B3A55;color:#fff;' +
         'font-size:1rem;line-height:1.5;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.3);display:none;' +
         'word-break:keep-all;';
       el.textContent = '쓰던 글을 다시 불러왔어요.';
