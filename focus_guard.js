@@ -66,14 +66,14 @@
       el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;padding:16px;' +
         'background:#B03A2E;color:#fff;font-size:1.15rem;font-weight:700;line-height:1.5;' +
         'text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.4);display:none;' +
-        'align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 14px;';
+        'align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 16px;';
       var msg = document.createElement('span');
       msg.id = 'focusGuardMsg';
       msg.style.wordBreak = 'keep-all';
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = '확인';
-      btn.style.cssText = 'min-height:44px;min-width:72px;padding:0 18px;border:2px solid #fff;border-radius:6px;' +
+      btn.style.cssText = 'min-height:44px;min-width:72px;padding:0 16px;border:2px solid #fff;border-radius:6px;' +
         'background:#fff;color:#B03A2E;font-size:1rem;font-weight:700;cursor:pointer;';
       btn.addEventListener('click', function () { el.style.display = 'none'; });
       el.appendChild(msg);
