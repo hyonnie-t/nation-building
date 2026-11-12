@@ -107,7 +107,7 @@ function moveRank(rank, i, d) {
 function oneLine(s) { return String(s == null ? "" : s).replace(/\s*\n+\s*/g, " ").trim(); }
 function cleanPage(p) { return oneLine(p).replace(/[()]/g, "").replace(/쪽$/, "").trim(); }
 function withPage(text, p) { const q = cleanPage(p); return oneLine(text) + (q ? " (" + q + "쪽)" : ""); }
-/* 카드 HP = 30 + 안의 단결력 × 6 (수치는 data.js RAID) */
+/* 카드 HP = 30 + 나라 안 단결력 × 6 (수치는 data.js RAID) */
 function statN(stats, k) { return (stats && stats[k] && stats[k].n) || 0; }
 function hp(stats) { return RAID.cardHpBase + statN(stats, "unity") * RAID.cardHpPerUnity; }
 
@@ -169,9 +169,14 @@ function parseCardText(text, regions, statDefs) {
   }
   if ((v = after("약점: ")) != null) [c.w2, c.pg2] = splitPage(v);
   statDefs.forEach(d => {
-    const l = lines.find(x => x.indexOf(d.icon + " " + d.name + " ★") === 0);
+    /* 2026-11-12: 능력치 이름을 바꿔도 옛 이름(d.old)으로 낸 카드를 읽는다 */
+    /* 이모지 변형 선택자(FE0F)가 빠지거나 줄 끝에 공백이 붙어도 읽는다(2026-11-12 검토) */
+    const nf = s => s.replace(/️/g, "");
+    const heads = [d.name].concat(d.old || []).map(nm => nf(d.icon + " " + nm + " ★"));
+    let head = "";
+    const l = lines.map(x => nf(x).trimEnd()).find(x => heads.some(h => (x.indexOf(h) === 0 ? ((head = h), true) : false)));
     if (!l) { c.stats[d.id] = { n: 0, r: "", p: "" }; return; }
-    const m = l.slice((d.icon + " " + d.name + " ★").length).match(/^(\d)(?::\s?(.*))?$/);
+    const m = l.slice(head.length).match(/^(\d)(?::\s?(.*))?$/);
     const [r, p] = splitPage(m && m[2] ? m[2] : "");
     c.stats[d.id] = { n: m ? Number(m[1]) : 0, r: r, p: p };
   });

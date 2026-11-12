@@ -569,6 +569,7 @@ function renderStarInputs() {
   STATS.forEach(d => {
     const blk = document.querySelector('.stat-block[data-stat="' + d.id + '"]');
     blk.querySelector(".stat-name").textContent = d.icon + " " + d.name;
+    blk.querySelector(".stat-q").textContent = d.q; // 2026-11-12: 뜻이 힌트 안에 접혀 있어 이름만 보고 별을 주었다 → 늘 보이게
     starRow($("star_" + d.id), S.stars[d.id] || 0, i => {
       if (S.submitted) return;
       if (!canSetStar(S.stars, d.id, i)) { toast(PART2.overMsg); return; }
@@ -1577,7 +1578,7 @@ function init() {
   ["regionQ", "symQ", "hitQ", "hitHint", "mvQ", "mvHint", "weakQ", "weakHint", "statQ", "statNote", "rivalQ", "rivalHint", "keyQ", "keyHint", "must"]
     .forEach(k => { $(k).textContent = PART2[k]; });
   $("mvName").placeholder = PART2.mvNamePh;
-  STATS.forEach(d => $("statHint").appendChild(el("li", "", d.icon + " " + d.name + " — " + d.q)));
+  PART2.statHint.forEach(s => $("statHint").appendChild(el("li", "", s))); // 2026-11-12: 뜻은 능력치마다 늘 보이고, 힌트에는 생각하는 방법만
   $("wrapGuide").textContent = PART2.guide;
   renderRubric();
   $("editBtn").textContent = PART2.editBtn;
