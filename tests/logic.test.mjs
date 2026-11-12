@@ -164,15 +164,26 @@ t("cardText → parseCardText: 되살리면 같은 카드(줄바꿈은 한 줄�
   assert.equal(c.stats.unity.n, 1);
   assert.equal(c.w3, "같은 점: 둘 다 헌법"); assert.equal(c.pg3, "182, 184");
   assert.equal(c.w4, "결과를 가른 것은 이것이다: 이유");
-  assert.equal(L.hp(c.stats), 36); // 30 + 안의 단결력 1 × 6
+  assert.equal(L.hp(c.stats), 36); // 30 + 나라 안 단결력 1 × 6
 });
 
 t("근거 1개 + 근거 없음 2개: 근거 없는 줄은 콜론 없이 «⚡ 개혁 추진력 ★3»", () => {
   const text = L.cardText(sample, REGIONS, ctx.STATS);
   assert.ok(text.includes("\n⚡ 개혁 추진력 ★5: 근거 하나 (172쪽)\n"), text);
   assert.ok(text.includes("\n🛡️ 외세 방어력 ★3\n"), text);
-  assert.ok(text.includes("\n🤝 안의 단결력 ★1\n"), text);
+  assert.ok(text.includes("\n🤝 나라 안 단결력 ★1\n"), text);
   assert.equal(L.starSum({ lead: 5, guard: 3, unity: 1 }), 9);
+});
+
+t("옛 이름 «안의 단결력»으로 낸 카드도 3부가 읽는다(2026-11-12 이름 바꿈)", () => {
+  const oldText = "[역사 카드] 청 🐉 · 라이벌 일본\n당한 일: 난징 조약 (178쪽)\n필살기 «양무운동»: 군대와 산업 (180쪽)\n약점: 변법 실패 (183쪽)\n"
+    + "⚡ 개혁 추진력 ★2\n🛡️ 외세 방어력 ★2\n🤝 안의 단결력 ★5: 옛 근거 (183쪽)\n라이벌 일본: 다르다 (181쪽)\n결과를 가른 것: 생각";
+  const c = L.parseCardText(oldText, REGIONS, ctx.STATS);
+  assert.equal(J(c.stats.unity), J({ n: 5, r: "옛 근거", p: "183" }));
+  assert.equal(c.stats.lead.n, 2); assert.equal(c.stats.guard.n, 2);
+  assert.equal(L.hp(c.stats), 60);
+  const back = L.parseCardText(L.cardText(c, REGIONS, ctx.STATS), REGIONS, ctx.STATS); // 새 이름으로 다시 써도 같다
+  assert.equal(J(back.stats.unity), J({ n: 5, r: "옛 근거", p: "183" }));
 });
 
 t("별 9개: 합계·남은 별·넘기기 막기·가장 많이 준 능력치(동점은 여럿)", () => {
@@ -199,7 +210,7 @@ t("능력치 3개, 지역마다 카드 모양(LOOK) 상징 3개", () => {
 const half = () => 0.5;
 const mk = (region, a, b, c, extra) => L.raidMember(Object.assign({ region, stats: { lead: { n: a }, guard: { n: b }, unity: { n: c } }, hit: "열강의 압력이 이어졌다", w2: "술탄이 헌법을 정지했다", mvName: "탄지마트" }, extra), { sid: "20501", name: "가" });
 
-t("raidMember: HP = 30 + 안의 단결력 × 6, 기본 카드는 3·3·3 «함께 버티기»·글 없음", () => {
+t("raidMember: HP = 30 + 나라 안 단결력 × 6, 기본 카드는 3·3·3 «함께 버티기»·글 없음", () => {
   const m = mk("ottoman", 5, 3, 1);
   assert.equal(m.max, 36); assert.equal(m.mvName, "탄지마트");
   const b = L.raidMember({ region: "iran", stats: { lead: { n: 3 }, guard: { n: 3 }, unity: { n: 3 } } }, { sid: "", name: "나" }, true);
