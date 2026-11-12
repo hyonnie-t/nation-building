@@ -845,7 +845,6 @@ async function copyOut() {
 
 /* ══ 카드 모양(화면용 DOM) ══ 포켓몬 카드 틀(2026-10-30): 이름+HP+타입 → 그림 창(지역 배경+도트) → 종 한 줄(당한 일) → 기술(비용 동그라미=개혁 추진력 별, 위력=별×RAID.specialPerLead) → 능력치 3칸 → 약점/라이벌 → 설명문(결과를 가른 것) → 번호.
  * 2부 미리보기(renderSummary)가 쓴다. opts.edit이면 별을 눌러 고칠 수 있다. 글 형식(G열)은 바꾸지 않는다. */
-function starText(n) { return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); }
 function withPageView(t, p) { t = oneLine(t); const q = cleanPage(p); return t ? t + (q ? " (" + q + "쪽)" : "") : ""; }
 
 function renderCard(box, c, opts) {
@@ -1153,7 +1152,6 @@ const MAX_MEMBERS = () => S.final ? 8 : 4;
 const PREVIEW_REGIONS = ["ottoman", "thai", "japan", "joseon"];
 
 function regionShort(m) { return regionName(m.region); }
-function memberLabel(m) { return regionShort(m) + (m.name ? " (" + m.name + ")" : ""); }
 
 /* 이 기기를 연 학생 본인 카드(포털 로그인 세션은 portal_auth.js가 붙인다) */
 async function fetchMyCard(sid, name) {
