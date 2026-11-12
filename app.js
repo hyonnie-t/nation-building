@@ -513,7 +513,8 @@ function radioGroup(box, options, getVal, setVal, cls) {
   options.forEach(o => {
     box.appendChild(choiceRow(o.name, getVal() === o.id, row => {
       if (S.submitted) return;
-      setVal(o.id); save();
+      if (setVal(o.id) === false) return; // 확인 창에서 취소하면 그대로 둔다(2026-11-12)
+      save();
       box.querySelectorAll("[role=radio]").forEach(r => r.setAttribute("aria-checked", r === row ? "true" : "false"));
     }, cls));
   });
@@ -521,6 +522,9 @@ function radioGroup(box, options, getVal, setVal, cls) {
 
 function renderPicks() {
   radioGroup($("regionPick"), REGIONS, () => S.region, v => {
+    /* 2026-11-12 점검: 지역을 바꿔도 쓴 글은 남아서, 앞 지역 글이 새 지역 카드로 제출될 수 있었다. 글이 있으면 한 번 묻는다. */
+    if (S.region && S.region !== v && ["hit", "mvName", "w1", "w2", "r_top", "w3", "w4"].some(id => val(id))
+      && !confirm(PART2.regionChangeConfirm(regionName(v)))) return false;
     if (S.region !== v) S.sym = LOOK[v].syms[0]; // 지역을 바꾸면 상징도 그 지역 것으로
     S.region = v;
     if (S.compare === v) S.compare = "";
@@ -568,7 +572,11 @@ function renderStarInputs() {
     starRow($("star_" + d.id), S.stars[d.id] || 0, i => {
       if (S.submitted) return;
       if (!canSetStar(S.stars, d.id, i)) { toast(PART2.overMsg); return; }
+      const before = reasonStat();
       S.stars[d.id] = i; save(); renderStarInputs(); refreshCounts();
+      /* 2026-11-12 점검: 별을 바꿔 근거 능력치가 달라지면 쓴 근거가 다른 능력치 근거로 제출됐다. 알려 준다. */
+      const after = reasonStat();
+      if (before && after !== before && val("r_top")) toast(after ? PART2.reasonMovedMsg(byId(STATS, after).name) : PART2.reasonTie);
     }, d.name, S.submitted);
   });
   const left = starsLeft(S.stars);
