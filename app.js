@@ -1151,6 +1151,7 @@ function spriteEl(id, opts) {
  * 친구들은 각자 자기 기기에서 3차시를 열어 «마무리만 쓰기»로 낸다. */
 const MAX_MEMBERS = () => S.final ? 8 : 4;
 const PREVIEW_REGIONS = ["ottoman", "thai", "japan", "joseon"];
+const ROW_TEXT_MAX = 14; // 모둠 보스 차례에 3장 이상 맞았을 때 카드 글을 이만큼만(폰 한 화면에 들게, 2026-11-16)
 
 function regionShort(m) { return regionName(m.region); }
 
@@ -1272,8 +1273,7 @@ async function loadFirstMember() {
     return;
   }
   const restored = restoreMembers(); // 새로고침 전에 불러온 모둠원을 되살린다
-  if (S.final || !S.sid || (restored && S.members.some(x => x.sid === S.sid))) { renderMembers(); return; }
-  if (restored) renderMembers();
+  if (S.final || !S.sid || restored) { renderMembers(); return; } // 되살렸으면 주인 카드를 다시 넣지 않는다(주인이 «빼기»했을 수 있다, 2026-11-16 검토)
   $("p3Msg").textContent = PART3.loadingMsg;
   try {
     const card = await fetchCard(S.sid, S.name);
@@ -1309,16 +1309,33 @@ function pushEvents(evs) {
   const mem = i => st.members[i];
   const fin = st.mode === "final";
   let unit = null;
+  /* 맞은 카드 이름표: 최종 보스전은 늘 «지역(이름)», 모둠은 같은 지역 카드가 둘 이상일 때만 이름을 붙인다 */
+  const label = i => {
+    const m = mem(i);
+    const dup = st.members.some((x, j) => j !== i && x.region === m.region);
+    return regionShort(m) + (m.name && (fin || dup) ? "(" + m.name + ")" : "");
+  };
   const flush = () => {
     if (!unit) return;
     if (unit.boss) {
+      const hits = unit.hits, weak = hits.some(h => h.weak);
+      const downLine = () => { if (unit.downs.length) unit.after = [PART3.msgDown(unit.downs.map(label).join(", "))]; }; // 쓰러짐은 맞은 카드 아래에 한 줄
       if (fin) {
-        const name = unit.names.find(Boolean); // 학생 글은 첫 줄에 한 번만
-        unit.lines.unshift((name ? PART3.msgBoss(name) : PART3.msgPress) + (unit.weak ? PART3.msgWeak : ""));
-        if (unit.downs.length) unit.after = [PART3.msgDown(unit.downs.join(", "))]; // 쓰러짐은 맞은 카드 조각 아래에
+        const name = hits.map(h => h.name).find(Boolean); // 학생 글은 첫 줄에 한 번만
+        unit.lines.push((name ? PART3.msgBoss(name) : PART3.msgPress) + (weak ? PART3.msgWeak : ""));
+        unit.chips = hits.map(h => PART3.msgHitShort(label(h.to), h.dmg, h.blocked));
+        downLine();
+      } else if (hits.length >= 3) {
+        /* 모둠 3장 이상(2026-11-16 검토: 폰 375에서 덩이가 화면을 넘었다): 줄마다 «지역 −피해(막음 n)» + 그 카드 글을 짧게 작은 글씨로 */
+        unit.lines.push((hits.some(h => h.name) ? PART3.msgBoss("").trim() : PART3.msgPress) + (weak ? PART3.msgWeak : ""));
+        unit.rows = hits.map(h => ({ main: PART3.msgHitShort(label(h.to), h.dmg, h.blocked), sub: h.name ? clip(h.name, ROW_TEXT_MAX) : "" }));
+        downLine();
+      } else {
+        hits.forEach(h => unit.lines.push((h.name ? PART3.msgBoss(h.name) : PART3.msgPress) + PART3.msgHit(label(h.to), h.dmg, h.blocked) + (h.weak ? PART3.msgWeak : "")));
+        unit.downs.forEach(i => unit.lines.push(PART3.msgDown(label(i))));
       }
     }
-    S.msgs.push({ lines: unit.lines, chips: unit.chips, after: unit.after || [] });
+    S.msgs.push({ lines: unit.lines, chips: unit.chips, rows: unit.rows || [], after: unit.after || [] });
     unit = null;
   };
   const line = s => { if (!unit) unit = { lines: [], chips: [] }; unit.lines.push(s); };
@@ -1329,13 +1346,10 @@ function pushEvents(evs) {
     else if (e.t === "guard") { line(PART3.msgGuard(regionShort(mem(e.who)), e.amt)); flush(); }
     else if (e.t === "heal") { line(PART3.msgHeal(regionShort(mem(e.who)), regionShort(mem(e.to)), e.amt)); flush(); }
     else if (e.t === "boss") {
-      if (!unit || !unit.boss) { flush(); unit = { lines: [], chips: [], boss: true, names: [], downs: [], weak: false }; }
-      if (fin) {
-        unit.names.push(e.name); unit.weak = unit.weak || e.weak;
-        unit.chips.push(PART3.msgHitShort(regionShort(mem(e.to)), e.dmg, e.blocked));
-      } else unit.lines.push((e.name ? PART3.msgBoss(e.name) : PART3.msgPress) + PART3.msgHit(regionShort(mem(e.to)), e.dmg, e.blocked) + (e.weak ? PART3.msgWeak : ""));
+      if (!unit || !unit.boss) { flush(); unit = { lines: [], chips: [], boss: true, hits: [], downs: [] }; }
+      unit.hits.push(e);
     } else if (e.t === "down") {
-      if (unit && unit.boss && fin) unit.downs.push(regionShort(mem(e.who)));
+      if (unit && unit.boss) unit.downs.push(e.who);
       else line(PART3.msgDown(regionShort(mem(e.who))));
     }
     else if (e.t === "jp1") { flush(); S.msgs.push(PART3.jp1); console.log("[raid] japan event after boss turn", st.bossTurns); }
@@ -1357,6 +1371,12 @@ function renderMsg(box, m) {
     m.chips.forEach(s => row.appendChild(el("span", "msg-chip", s)));
     box.appendChild(row);
   }
+  (m.rows || []).forEach(r => {
+    const row = el("span", "msg-row");
+    row.appendChild(el("span", "msg-row-main", r.main));
+    if (r.sub) row.appendChild(el("span", "msg-row-sub", r.sub));
+    box.appendChild(row);
+  });
   (m.after || []).forEach(s => box.appendChild(el("span", "msg-line msg-after", s)));
 }
 

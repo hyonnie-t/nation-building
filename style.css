@@ -373,6 +373,10 @@ body.eboard .final-q{font-size:32px}
 .msg-chips{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-2);margin-top:var(--space-1)}
 .msg-chip{padding:0 var(--space-1);border:2px solid var(--pline);white-space:nowrap}
 .msg-chips+.msg-after{margin-top:var(--space-1)}
+.msg-row{display:block;margin-top:var(--space-1)}
+.msg-row-main{white-space:nowrap}
+.msg-row-sub{margin-left:var(--space-2);font-size:14px;color:#555} /* 그 카드의 학생 글(짧게) */
+.msg-row+.msg-after{margin-top:var(--space-1)}
 .msg-next{display:block;margin-top:var(--space-2);font:15px var(--pixel);color:var(--saffron-ink);text-align:right}
 .msg-sub{display:block;margin-top:var(--space-2);font:14px var(--pixel);color:#555}
 .skill-box{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);padding:var(--space-2);align-content:start}
@@ -432,6 +436,8 @@ body.eboard .turn-ui small{font-size:18px}
 body.eboard .msg-box{font-size:30px;min-height:170px}
 body.eboard .msg-sub{font-size:20px}
 body.eboard .msg-chip{font-size:26px}
+body.eboard .msg-next{font-size:22px}
+body.eboard .msg-row-sub{font-size:22px}
 body.eboard .skill-box .btn{min-height:76px;font-size:26px}
 body.eboard .ctrl-q{font-size:26px}
 body.eboard .f-info .hp-num{font-size:18px}
