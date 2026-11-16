@@ -284,6 +284,7 @@ const PART3 = {
   skillRest: "쉬는 중",
   skillGuard: "🛡️ 막아서기",
   skillHeal: "🤝 힘 보태기",
+  skillFull: "모두 HP 가득",
   tapNext: "▼ 눌러서 다음",
   ask: r => r + "은(는) 무엇을 할까?",
   moveInfo: (mv, lead, per) => "필살기 «" + mv + "» — 개혁 추진력 ★" + lead + " × " + per + " + 주사위",
@@ -304,6 +305,7 @@ const PART3 = {
   msgPress: "열강의 압박!",
   msgWeak: " 아픈 곳을 찔렸다!",
   msgHit: (r, d, b) => " → " + r + "에게 " + d + "의 피해!" + (b ? " (막아서기로 " + b + " 막았다)" : ""),
+  msgHitShort: (r, d, b) => r + " −" + d + (b ? "(막음 " + b + ")" : ""), // 최종 보스전: 맞은 카드를 짧게 모아 보인다
   msgDown: r => r + " 카드가 쓰러졌다. 남은 동료들에게 힘을 보탠다!",
   jp1: "청일 전쟁에서 일본이 이겼다…",
   jp2: "일본이 제국주의 국가의 대열에 합류했다!",
@@ -326,6 +328,7 @@ const PART3 = {
   doneMsg: "제출했어! 수고했어.",
   finalQ: "결과는 나라마다 달랐어. 그래도 이 사람들이 지키고 바꾸려 한 것은 무엇이었을까? 내 카드 지역을 예로 들어 한두 문장으로 써 봐.",
   finalHint: "내 카드의 필살기 칸을 다시 읽어 봐. 그 사람들은 무엇을 걸고 그 일을 했을까?",
+  myCardTitle: "내 카드",
   finalMin: 20,
   submitBtn: "제출"
 };

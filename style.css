@@ -366,6 +366,13 @@ body.eboard .final-q{font-size:32px}
 .dialog{margin-top:-3px;border:3px solid var(--pline);background:#fff;box-shadow:4px 4px 0 rgba(0,0,0,.35);display:grid;grid-template-columns:1.2fr 1fr}
 .msg-box{display:block;width:100%;min-height:140px;margin:0;padding:var(--space-3) var(--space-3);border:0;border-right:3px solid var(--pline);border-radius:0;background:#fff;text-align:left;font:19px/1.5 var(--pixel);color:var(--pline);cursor:pointer}
 .msg-box:disabled{cursor:default}
+/* 2026-11-16: 보스 차례·퀴즈+기술 결과를 한 덩이로 — 줄마다 나누고, 긴 학생 글도 칸 밖으로 넘치지 않게 */
+.msg-box{word-break:keep-all;overflow-wrap:anywhere}
+.msg-line{display:block}
+.msg-line+.msg-line{margin-top:var(--space-1)}
+.msg-chips{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-2);margin-top:var(--space-1)}
+.msg-chip{padding:0 var(--space-1);border:2px solid var(--pline);white-space:nowrap}
+.msg-chips+.msg-after{margin-top:var(--space-1)}
 .msg-next{display:block;margin-top:var(--space-2);font:15px var(--pixel);color:var(--saffron-ink);text-align:right}
 .msg-sub{display:block;margin-top:var(--space-2);font:14px var(--pixel);color:#555}
 .skill-box{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);padding:var(--space-2);align-content:start}
@@ -377,6 +384,9 @@ body.eboard .final-q{font-size:32px}
 .ctrl-q{grid-column:1/-1;margin:0;font:700 16px var(--pixel);color:#3d4659}
 .end-card h2{font-size:1.6rem}
 .end-record{margin:var(--space-2) 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
+.my-card3{margin-top:var(--space-2);padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-left:4px solid var(--saffron);border-radius:4px;background:#fafbfd;font:16px/1.6 var(--sans)}
+.my-card3 p{margin:var(--space-1) 0 0}
+.my-card3-head{display:block;color:var(--indigo-deep)}
 .rules-modal .rules-list{margin:var(--space-2) 0 0;padding-left:1.3em;font:17px/1.7 var(--sans)}
 @media (max-width:899px){
   .field{height:460px}
@@ -421,6 +431,7 @@ body.eboard .turn-ui{width:360px;font-size:22px}
 body.eboard .turn-ui small{font-size:18px}
 body.eboard .msg-box{font-size:30px;min-height:170px}
 body.eboard .msg-sub{font-size:20px}
+body.eboard .msg-chip{font-size:26px}
 body.eboard .skill-box .btn{min-height:76px;font-size:26px}
 body.eboard .ctrl-q{font-size:26px}
 body.eboard .f-info .hp-num{font-size:18px}
