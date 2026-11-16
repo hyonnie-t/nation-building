@@ -356,7 +356,17 @@ function simpleSkill(st) {
 
 /* accuracy: 단서 퀴즈 정답률(0~1, 없으면 1). 맞히면 위력 1, 틀리면 RAID.quizWrongMul.
  * st.sim에 한 판의 퀴즈 수와 누르기 수를 센다(메시지: 기술 1·보스 차례 1·일본 이벤트 줄 / 단추: 기술+퀴즈 답, 열강 차례, 일본 질문 «계속»). */
-function playRaid(members, mode, rng, jpChoice, accuracy) {
+/* 시뮬레이션 전략(2026-11-16 검토): guard = 필살기 쉬는 차례엔 늘 막아서기 / heal = 막아서기 없이 필살기+힘 보태기(모두 HP 가득이면 힘 보태기를 못 누르므로 막아서기) */
+function guardFirstSkill(st) { return canSpecial(st.members[currentActor(st)]) ? "special" : "guard"; }
+function healFirstSkill(st) {
+  if (canSpecial(st.members[currentActor(st)])) return "special";
+  return teamIdx(st).some(j => st.members[j].hp < st.members[j].max) ? "heal" : "guard";
+}
+const SIM_STRATEGIES = { simple: simpleSkill, guard: guardFirstSkill, heal: healFirstSkill };
+
+/* strategy: "simple"(기본) | "guard" | "heal" */
+function playRaid(members, mode, rng, jpChoice, accuracy, strategy) {
+  const pick = SIM_STRATEGIES[strategy || "simple"] || simpleSkill;
   const st = newRaid(members, mode);
   const acc = accuracy == null ? 1 : accuracy;
   st.sim = { quizzes: 0, msgTaps: 0, btnTaps: 0 };
@@ -364,7 +374,7 @@ function playRaid(members, mode, rng, jpChoice, accuracy) {
   while (!st.over && guard++ < 1000) {
     if (currentActor(st) >= 0) {
       const power = rng() < acc ? 1 : RAID.quizWrongMul;
-      act(st, simpleSkill(st), rng, power);
+      act(st, pick(st), rng, power);
       st.sim.quizzes++; st.sim.msgTaps++; st.sim.btnTaps += 2;
     } else {
       const ev = bossTurn(st, rng, st.controller >= 0 ? (jpChoice || "weak") : "");

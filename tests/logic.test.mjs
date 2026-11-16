@@ -242,14 +242,15 @@ t("필살기: 추진력 × 4 + 주사위, 다음 내 차례 한 번은 못 씀",
 
 t("막아서기는 이번 보스 차례 모둠 전체 피해에서 그만큼 빼고, 힘 보태기는 HP가 가장 낮은 동료를 회복", () => {
   const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)], "group");
-  L.act(st, "guard", half); // 3 × 2 = 6
-  L.act(st, "guard", half); // 4 × 2 = 8 → 합 14
-  assert.equal(st.shield, 14);
+  L.act(st, "guard", half); // 3 × guardPerStat
+  L.act(st, "guard", half); // 4 × guardPerStat → 합 7 × guardPerStat
+  const sh = 7 * ctx.RAID.guardPerStat;
+  assert.equal(st.shield, sh);
   const ev = L.bossTurn(st, () => 0.9, ""); // 약점 아님(0.9 ≥ 0.25), 주사위 6
   const hits = ev.filter(e => e.t === "boss");
   assert.equal(hits.length, 2); // 살아 있는 카드 모두를 친다
   const raw = ctx.RAID.group.bossAtk + 6;
-  assert.equal(hits[0].blocked + hits[1].blocked, Math.min(14, raw * 2));
+  assert.equal(hits[0].blocked + hits[1].blocked, Math.min(sh, raw * 2));
   assert.equal(st.shield, 0);
   st.members[1].hp = 10;
   const h = L.act(st, "heal", half);
@@ -387,7 +388,7 @@ t("도트 캐릭터: 지역 7 + 보스, 모두 16×16, 쓰는 글자는 배색�
 /* ── 균형 시뮬레이션(§5-6·§6, 2026-11-16 정답률 넣음): 무작위 별 9개 카드, 단순 전략, 각 1,000판, 퀴즈 정답률 0.5·0.7·1.0 ── */
 const rows = report(ctx, s => console.log("  " + s));
 t("시뮬레이션: 모둠 0.7 → 60~75%·1.0 → 92% 이하·0.5 → 35% 이상·보스 차례 6~9 / 최종 0.7 → 55~70%·0.5 → 30% 이상·보스 차례 4~5.5·일본 이벤트까지 95% 이상 / 일본 1~3장이 일본 없는 모둠보다 10%p 넘게 낮지 않음", () => {
-  rows.forEach(r => {
+  rows.filter(r => r.strategy === "simple").forEach(r => {
     const fin = r.mode === "final";
     if (!r.japan) {
       if (r.accuracy === 0.7) {
@@ -399,10 +400,18 @@ t("시뮬레이션: 모둠 0.7 → 60~75%·1.0 → 92% 이하·0.5 → 35% 이�
       if (r.accuracy === 1 && !fin) assert.ok(r.win <= 0.92, J(r));
       if (r.accuracy === 0.5) assert.ok(r.win >= (fin ? 0.30 : 0.35), J(r));
     } else {
-      const base = rows.find(x => x.mode === r.mode && x.size === r.size && x.accuracy === r.accuracy && !x.japan);
+      const base = rows.find(x => x.strategy === "simple" && x.mode === r.mode && x.size === r.size && x.accuracy === r.accuracy && !x.japan);
       assert.ok(base.win - r.win <= 0.10, J(r));
     }
     if (fin) assert.ok(r.jpRate >= 0.95, J(r));
+  });
+});
+
+/* 2026-11-16 검토: 막아서기가 힘 보태기보다 너무 약해 전략에 따라 승률이 크게 갈렸다. «막아서기만 계속»이 못 이기는 것은 그대로 둔다. */
+t("시뮬레이션(전략): 정답률 0.7 모둠에서 막아서기 위주 45% 이상, 힘 보태기 위주 90% 이하(기본 카드만인 모둠 포함)", () => {
+  rows.filter(r => r.mode === "group" && r.accuracy === 0.7).forEach(r => {
+    if (r.strategy === "guard") assert.ok(r.win >= 0.45, J(r));
+    if (r.strategy === "heal") assert.ok(r.win <= 0.90, J(r));
   });
 });
 
