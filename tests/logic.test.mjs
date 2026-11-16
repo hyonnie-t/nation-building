@@ -321,6 +321,50 @@ t("일본 카드만 남았으면 넘기지 않는다(바로 지지 않게)", () 
   assert.equal(L.teamIdx(st).length, 2);
 });
 
+t("일본 카드 여러 장: 차례가 가장 앞선 살아 있는 한 장만 열강 편, 나머지는 모둠에 남는다(2026-11-16)", () => {
+  const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("japan", 3, 3, 3), mk("japan", 2, 3, 4), mk("japan", 4, 3, 2)], "group");
+  st.members.forEach(m => { m.hp = m.max = 200; });
+  st.members[1].hp = 0; st.members[1].down = true; // 앞선 일본 카드가 쓰러져 있으면 그다음 살아 있는 일본 카드
+  const ev = toThird(st);
+  assert.equal(ev.filter(e => e.t === "jpSwitch").length, 1);
+  assert.equal(J(st.members.map(m => m.foe)), J([false, false, true, false]));
+  assert.equal(st.controller, 2);
+  assert.equal(J(L.teamIdx(st)), J([0, 3]));
+});
+
+t("보스 HP의 일본 몫은 넘어갈 한 장만 센다(일본 카드만 있으면 0장)", () => {
+  const g = ctx.RAID.group, f = g.bossHpPer + (4 - g.base) * g.grow;
+  const one = L.newRaid([mk("ottoman", 3, 3, 3), mk("japan", 3, 3, 3), mk("thai", 3, 3, 3), mk("qing", 3, 3, 3)], "group").boss.max;
+  const three = L.newRaid([mk("ottoman", 3, 3, 3), mk("japan", 3, 3, 3), mk("japan", 3, 3, 3), mk("japan", 3, 3, 3)], "group").boss.max;
+  assert.equal(one, Math.round((4 - ctx.RAID.japanShare) * f));
+  assert.equal(three, one);
+  const allJp = L.newRaid([mk("japan", 3, 3, 3), mk("japan", 3, 3, 3)], "group").boss.max;
+  assert.equal(allJp, 2 * g.bossHpPer);
+});
+
+t("«무작위 공격»은 weakChance 확률로 약점, «약점 공격»은 늘 약점(2026-11-16)", () => {
+  const run = (choice, r) => {
+    const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)], "group");
+    st.members.forEach(m => { m.hp = m.max = 200; });
+    L.act(st, "guard", half); L.act(st, "guard", half); st.shield = 0;
+    return L.bossTurn(st, () => r, choice).filter(e => e.t === "boss").every(e => e.weak);
+  };
+  assert.equal(run("random", 0.1), true);   // 0.1 < weakChance
+  assert.equal(run("random", 0.9), false);
+  assert.equal(run("weak", 0.9), true);
+  assert.equal(run("", 0.9), false);
+});
+
+t("일본 이벤트 시점: 모둠은 세 번째, 최종 보스전은 두 번째 보스 차례 뒤", () => {
+  assert.equal(L.japanAfter({ mode: "group" }), 3);
+  assert.equal(L.japanAfter({ mode: "final" }), 2);
+  const st = L.newRaid(Array.from({ length: 6 }, (x, i) => mk(i ? "iran" : "japan", 3, 3, 3)), "final");
+  st.members.forEach(m => { m.hp = m.max = 500; });
+  let at = 0;
+  while (!at && st.bossTurns < 5) { if (L.currentActor(st) >= 0) L.act(st, "guard", half); else if (L.bossTurn(st, () => 0.9, "").some(e => e.t === "jp1")) at = st.bossTurns; }
+  assert.equal(at, 2);
+});
+
 t("보스 HP: 모둠 인원·최종 보스전 공식", () => {
   const two = [mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)];
   const g = ctx.RAID.group, f = ctx.RAID.final;
@@ -340,17 +384,25 @@ t("도트 캐릭터: 지역 7 + 보스, 모두 16×16, 쓰는 글자는 배색�
   });
 });
 
-/* ── 균형 시뮬레이션(§5-6·§6): 무작위 별 9개 카드, 단순 전략, 각 1,000판 ── */
+/* ── 균형 시뮬레이션(§5-6·§6, 2026-11-16 정답률 넣음): 무작위 별 9개 카드, 단순 전략, 각 1,000판, 퀴즈 정답률 0.5·0.7·1.0 ── */
 const rows = report(ctx, s => console.log("  " + s));
-t("시뮬레이션: 모둠 60~80%, 최종 50~70%, 일본 포함이 10%p 넘게 낮지 않음, 보스 차례 평균 6~10번", () => {
+t("시뮬레이션: 모둠 0.7 → 60~75%·1.0 → 92% 이하·0.5 → 35% 이상·보스 차례 6~9 / 최종 0.7 → 55~70%·0.5 → 30% 이상·보스 차례 4~5.5·일본 이벤트까지 95% 이상 / 일본 1~3장이 일본 없는 모둠보다 10%p 넘게 낮지 않음", () => {
   rows.forEach(r => {
-    const [lo, hi] = r.mode === "final" ? [0.5, 0.7] : [0.6, 0.8];
-    assert.ok(r.win >= lo && r.win <= hi, J(r));
-    assert.ok(r.avgTurns >= 6 && r.avgTurns <= 10, J(r));
-    if (r.japan) {
-      const base = rows.find(x => x.mode === r.mode && x.size === r.size && !x.japan);
+    const fin = r.mode === "final";
+    if (!r.japan) {
+      if (r.accuracy === 0.7) {
+        const [lo, hi] = fin ? [0.55, 0.70] : [0.60, 0.75];
+        assert.ok(r.win >= lo && r.win <= hi, J(r));
+        const [tlo, thi] = fin ? [4, 5.5] : [6, 9];
+        assert.ok(r.avgTurns >= tlo && r.avgTurns <= thi, J(r));
+      }
+      if (r.accuracy === 1 && !fin) assert.ok(r.win <= 0.92, J(r));
+      if (r.accuracy === 0.5) assert.ok(r.win >= (fin ? 0.30 : 0.35), J(r));
+    } else {
+      const base = rows.find(x => x.mode === r.mode && x.size === r.size && x.accuracy === r.accuracy && !x.japan);
       assert.ok(base.win - r.win <= 0.10, J(r));
     }
+    if (fin) assert.ok(r.jpRate >= 0.95, J(r));
   });
 });
 
