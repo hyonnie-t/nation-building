@@ -207,8 +207,10 @@ function raidMember(card, who, basic) {
 
 function newRaid(members, mode) {
   const cfg = RAID[mode === "final" ? "final" : "group"];
-  const jp = members.filter(m => m.region === "japan").length;
-  const bossMax = Math.round((members.length - jp * RAID.japanShare) * (cfg.bossHpPer + (members.length - cfg.base) * cfg.grow)); // 일본 카드는 나중에 보스 편으로 가므로 처음 보스 HP 몫을 덜 센다
+  const jpAll = members.filter(m => m.region === "japan").length;
+  const jp = jpAll && jpAll < members.length ? 1 : 0; // 2026-11-16: 보스 편으로 넘어가는 일본 카드는 한 장뿐이고, 일본 카드만 있으면 안 넘어간다
+  const share = cfg.japanShare != null ? cfg.japanShare : RAID.japanShare; // 최종 보스전은 따로 둘 수 있다
+  const bossMax = Math.round((members.length - jp * share) * (cfg.bossHpPer + (members.length - cfg.base) * cfg.grow)); // 넘어갈 일본 카드 한 장은 처음 보스 HP 몫을 덜 센다
   const st = {
     mode: mode === "final" ? "final" : "group",
     members: members.map(m => Object.assign({}, m, { hp: m.max, cd: 0, down: false, foe: false })),
@@ -285,13 +287,21 @@ function makeQuiz(cards, regions, cols, rng, used, kind) {
   return { id: card.id, text: card.t, page: card.p, kind: kind, choices: choices, answer: answer, answerName: choices.find(c => c.id === answer).name };
 }
 
-/* 보스 차례. choice: 일본 카드 주인이 고른 공격("random" | "weak"), 없으면 확률로 약점 공격. */
+/* 일본 이벤트가 일어나는 보스 차례(최종 보스전은 RAID.final.japanAfter로 앞당긴다) */
+function japanAfter(st) { const cfg = RAID[st.mode] || {}; return cfg.japanAfter || RAID.japanAfter; }
+
+/* 보스 차례. choice: 일본 카드 주인이 고른 공격("random" | "weak"), 없으면 확률로 약점 공격.
+ * «무작위 공격»("random")도 이름대로 weakChance 확률로 약점이 나온다(2026-11-16 — 전에는 절대 안 나왔다). */
 function bossTurn(st, rng, choice) {
   if (st.over || currentActor(st) >= 0) return [];
   const ev = [];
+  /* 2026-11-16 재검토: 막아서기 × 4가 되면서 막아서기만 누르면 판이 끝나지 않았다.
+   * rageAfter번째 보스 차례부터 보스 차례마다 공격이 rageStep씩 세진다(게임 장치). */
+  const cfg = RAID[st.mode] || {};
+  if (st.bossTurns + 1 >= (cfg.rageAfter || RAID.rageAfter)) { st.boss.atk += RAID.rageStep; ev.push({ t: "rage" }); }
   const team = teamIdx(st).slice();
   const hits = Math.min(team.length, Math.ceil(team.length / RAID.bossHitsPer)); // 모둠이 클수록 한 번에 여럿을 친다
-  const weak = choice ? choice === "weak" : rng() < RAID.weakChance;
+  const weak = choice === "weak" ? true : rng() < RAID.weakChance;
   for (let h = 0; h < hits; h++) {
     const ti = team.splice(Math.floor(rng() * team.length), 1)[0];
     const t = st.members[ti];
@@ -308,26 +318,27 @@ function bossTurn(st, rng, choice) {
   st.shield = 0;
   st.bossTurns++;
   if (!teamIdx(st).length) { st.over = "lose"; ev.push({ t: "lose" }); return ev; }
-  if (!st.japanDone && st.bossTurns === RAID.japanAfter) ev.push.apply(ev, japanEvent(st));
+  if (!st.japanDone && st.bossTurns === japanAfter(st)) ev.push.apply(ev, japanEvent(st));
   if (!st.over) startRound(st);
   return ev;
 }
 
-/* 일본 이벤트(한 번만): 모둠의 살아 있는 일본 카드는 보스 편으로, 없으면 일본이 보스 옆에 선다. */
+/* 일본 이벤트(한 번만): 모둠의 살아 있는 일본 카드 가운데 차례가 가장 앞선 한 장만 보스 편으로(2026-11-16 — 여러 장이 다 넘어가면 모둠이 거의 졌다),
+ * 나머지 일본 카드는 모둠에 남는다. 살아 있는 일본 카드가 없으면 일본이 보스 옆에 선다. */
 function japanEvent(st) {
   st.japanDone = true;
   const ev = [{ t: "jp1" }, { t: "jp2" }];
-  const jps = teamIdx(st).filter(i => st.members[i].region === "japan");
-  if (jps.length && jps.length < teamIdx(st).length) { // 일본 카드만 남았으면 넘기지 않는다(바로 지는 일이 없게)
-    jps.forEach(i => {
-      const m = st.members[i];
-      m.foe = true;
-      const add = Math.round(m.hp * RAID.japanHpRate);
-      st.boss.hp += add; st.boss.max += add;
-      st.boss.atk += Math.round(m.lead * RAID.japanAtkRate);
-      if (st.controller < 0) st.controller = i;
-      ev.push({ t: "jpSwitch", who: i, hp: add });
-    });
+  const team = teamIdx(st);
+  const jps = team.filter(i => st.members[i].region === "japan");
+  if (jps.length && jps.length < team.length) { // 일본 카드만 남았으면 넘기지 않는다(바로 지는 일이 없게)
+    const i = jps[0]; // teamIdx는 차례 순서
+    const m = st.members[i];
+    m.foe = true;
+    const add = Math.round(m.hp * RAID.japanHpRate);
+    st.boss.hp += add; st.boss.max += add;
+    st.boss.atk += Math.round(m.lead * RAID.japanAtkRate);
+    st.controller = i;
+    ev.push({ t: "jpSwitch", who: i, hp: add });
   } else {
     st.japanAlly = true;
     st.boss.hp += RAID.noJapanHp; st.boss.max += RAID.noJapanHp;
@@ -347,12 +358,33 @@ function simpleSkill(st) {
   return "guard";
 }
 
-function playRaid(members, mode, rng, jpChoice) {
+/* accuracy: 단서 퀴즈 정답률(0~1, 없으면 1). 맞히면 위력 1, 틀리면 RAID.quizWrongMul.
+ * st.sim에 한 판의 퀴즈 수와 누르기 수를 센다(메시지: 기술 1·보스 차례 1·일본 이벤트 줄 / 단추: 기술+퀴즈 답, 열강 차례, 일본 질문 «계속»). */
+/* 시뮬레이션 전략(2026-11-16 검토): guard = 필살기 쉬는 차례엔 늘 막아서기 / heal = 막아서기 없이 필살기+힘 보태기(모두 HP 가득이면 힘 보태기를 못 누르므로 막아서기) */
+function guardFirstSkill(st) { return canSpecial(st.members[currentActor(st)]) ? "special" : "guard"; }
+function healFirstSkill(st) {
+  if (canSpecial(st.members[currentActor(st)])) return "special";
+  return teamIdx(st).some(j => st.members[j].hp < st.members[j].max) ? "heal" : "guard";
+}
+const SIM_STRATEGIES = { simple: simpleSkill, guard: guardFirstSkill, heal: healFirstSkill };
+
+/* strategy: "simple"(기본) | "guard" | "heal" */
+function playRaid(members, mode, rng, jpChoice, accuracy, strategy) {
+  const pick = SIM_STRATEGIES[strategy || "simple"] || simpleSkill;
   const st = newRaid(members, mode);
+  const acc = accuracy == null ? 1 : accuracy;
+  st.sim = { quizzes: 0, msgTaps: 0, btnTaps: 0 };
   let guard = 0;
   while (!st.over && guard++ < 1000) {
-    if (currentActor(st) >= 0) act(st, simpleSkill(st), rng);
-    else bossTurn(st, rng, st.controller >= 0 ? (jpChoice || "weak") : "");
+    if (currentActor(st) >= 0) {
+      const power = rng() < acc ? 1 : RAID.quizWrongMul;
+      act(st, pick(st), rng, power);
+      st.sim.quizzes++; st.sim.msgTaps++; st.sim.btnTaps += 2;
+    } else {
+      const ev = bossTurn(st, rng, st.controller >= 0 ? (jpChoice || "weak") : "");
+      st.sim.msgTaps += 1 + ev.filter(e => /^jp(1|2|Switch|Ally)$/.test(e.t)).length;
+      st.sim.btnTaps += 1 + (ev.some(e => e.t === "jpQ") ? 1 : 0);
+    }
   }
   return st;
 }
@@ -401,4 +433,4 @@ function deadlineText(firstAt, hours) {
 }
 
 if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
-  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
+  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };

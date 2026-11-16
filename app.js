@@ -1151,6 +1151,7 @@ function spriteEl(id, opts) {
  * 친구들은 각자 자기 기기에서 3차시를 열어 «마무리만 쓰기»로 낸다. */
 const MAX_MEMBERS = () => S.final ? 8 : 4;
 const PREVIEW_REGIONS = ["ottoman", "thai", "japan", "joseon"];
+const ROW_TEXT_MAX = 14; // 모둠 보스 차례에 3장 이상 맞았을 때 카드 글을 이만큼만(폰 한 화면에 들게, 2026-11-16)
 
 function regionShort(m) { return regionName(m.region); }
 
@@ -1201,6 +1202,26 @@ function renderMembers() {
   const full = S.members.length >= MAX_MEMBERS();
   $("addBox").hidden = full || S.preview;
   $("raidStart").disabled = S.members.length < 2;
+  saveMembers();
+  renderMyCard3();
+}
+
+/* 새로고침 대비(2026-11-16): 불러온 모둠원(카드 포함)만 이 탭의 sessionStorage에 둔다. 전투 진행은 저장하지 않는다. 미리보기는 저장 안 함. */
+function membersKey() { return "nation_building:p3members:" + (S.final ? "final" : S.sid); }
+function saveMembers() {
+  if (S.preview || (!S.final && !S.sid)) return;
+  try { sessionStorage.setItem(membersKey(), JSON.stringify(S.members.map(m => ({ sid: m.sid, name: m.name, card: m.card, basic: !!m.basic })))); } catch (e) { /* 저장소가 막히면 메모리만 */ }
+}
+function restoreMembers() {
+  if (S.preview || (!S.final && !S.sid)) return false;
+  try {
+    const v = JSON.parse(sessionStorage.getItem(membersKey()) || "null");
+    if (!Array.isArray(v)) return false;
+    const ok = v.filter(m => m && m.card && m.card.region && REGIONS.some(r => r.id === m.card.region)).slice(0, MAX_MEMBERS());
+    if (!ok.length) return false;
+    S.members = ok;
+    return true;
+  } catch (e) { return false; }
 }
 
 async function loadMember() {
@@ -1251,7 +1272,8 @@ async function loadFirstMember() {
     renderMembers();
     return;
   }
-  if (S.final || !S.sid) { renderMembers(); return; }
+  const restored = restoreMembers(); // 새로고침 전에 불러온 모둠원을 되살린다
+  if (S.final || !S.sid || restored) { renderMembers(); return; } // 되살렸으면 주인 카드를 다시 넣지 않는다(주인이 «빼기»했을 수 있다, 2026-11-16 검토)
   $("p3Msg").textContent = PART3.loadingMsg;
   try {
     const card = await fetchCard(S.sid, S.name);
@@ -1280,24 +1302,84 @@ function startRaid() {
   $("raidArena").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+/* 메시지 하나 = 한 번 누르면 넘어가는 덩이(2026-11-16). 글자열 한 줄이거나 { lines: [줄…], chips: [짧은 조각…] }.
+ * 퀴즈 결과 + 기술 결과는 한 덩이, 보스 차례(맞은 카드 전부 + 쓰러짐)도 한 덩이. 최종 보스전은 줄이 많아 맞은 카드를 짧은 조각으로 모은다. */
 function pushEvents(evs) {
   const st = S.raid;
   const mem = i => st.members[i];
+  const fin = st.mode === "final";
+  let unit = null;
+  /* 맞은 카드 이름표: 최종 보스전은 늘 «지역(이름)», 모둠은 같은 지역 카드가 둘 이상일 때만 이름을 붙인다 */
+  const label = i => {
+    const m = mem(i);
+    const dup = st.members.some((x, j) => j !== i && x.region === m.region);
+    return regionShort(m) + (m.name && (fin || dup) ? "(" + m.name + ")" : "");
+  };
+  const flush = () => {
+    if (!unit) return;
+    if (unit.boss) {
+      const hits = unit.hits, weak = hits.some(h => h.weak);
+      const downLine = () => { if (unit.downs.length) unit.after = [PART3.msgDown(unit.downs.map(label).join(", "))]; }; // 쓰러짐은 맞은 카드 아래에 한 줄
+      if (fin) {
+        const name = hits.map(h => h.name).find(Boolean); // 학생 글은 첫 줄에 한 번만
+        unit.lines.push((name ? PART3.msgBoss(name) : PART3.msgPress) + (weak ? PART3.msgWeak : ""));
+        unit.chips = hits.map(h => PART3.msgHitShort(label(h.to), h.dmg, h.blocked));
+        downLine();
+      } else if (hits.length >= 3) {
+        /* 모둠 3장 이상(2026-11-16 검토: 폰 375에서 덩이가 화면을 넘었다): 줄마다 «지역 −피해(막음 n)» + 그 카드 글을 짧게 작은 글씨로 */
+        unit.lines.push((hits.some(h => h.name) ? PART3.msgBoss("").trim() : PART3.msgPress) + (weak ? PART3.msgWeak : ""));
+        unit.rows = hits.map(h => ({ main: PART3.msgHitShort(label(h.to), h.dmg, h.blocked), sub: h.name ? clip(h.name, ROW_TEXT_MAX) : "" }));
+        downLine();
+      } else {
+        hits.forEach(h => unit.lines.push((h.name ? PART3.msgBoss(h.name) : PART3.msgPress) + PART3.msgHit(label(h.to), h.dmg, h.blocked) + (h.weak ? PART3.msgWeak : "")));
+        unit.downs.forEach(i => unit.lines.push(PART3.msgDown(label(i))));
+      }
+    }
+    if (unit.rage) unit.lines.unshift(PART3.msgRage); // 보스 차례가 길어져 공격이 세질 때 덩이 첫머리에 한 줄
+    S.msgs.push({ lines: unit.lines, chips: unit.chips, rows: unit.rows || [], after: unit.after || [] });
+    unit = null;
+  };
+  const line = s => { if (!unit) unit = { lines: [], chips: [] }; unit.lines.push(s); };
   evs.forEach(e => {
-    if (e.t === "special") S.msgs.push(PART3.msgSpecial(regionShort(mem(e.who)), mem(e.who).mvName, e.dmg));
-    else if (e.t === "guard") S.msgs.push(PART3.msgGuard(regionShort(mem(e.who)), e.amt));
-    else if (e.t === "heal") S.msgs.push(PART3.msgHeal(regionShort(mem(e.who)), regionShort(mem(e.to)), e.amt));
+    if (e.t !== "boss" && e.t !== "down" && unit && unit.boss) flush();
+    if (e.t === "quiz") { flush(); line(e.ok ? PART3.quizOk : PART3.quizNo(e.name, e.page, Math.round(RAID.quizWrongMul * 100), e.timeout)); } // 다음 기술 줄과 한 덩이
+    else if (e.t === "special") { line(PART3.msgSpecial(regionShort(mem(e.who)), mem(e.who).mvName, e.dmg)); flush(); }
+    else if (e.t === "guard") { line(PART3.msgGuard(regionShort(mem(e.who)), e.amt)); flush(); }
+    else if (e.t === "heal") { line(PART3.msgHeal(regionShort(mem(e.who)), regionShort(mem(e.to)), e.amt)); flush(); }
+    else if (e.t === "rage") { flush(); unit = { lines: [], chips: [], boss: true, hits: [], downs: [], rage: true }; }
     else if (e.t === "boss") {
-      S.msgs.push((e.name ? PART3.msgBoss(e.name) : PART3.msgPress) + PART3.msgHit(regionShort(mem(e.to)), e.dmg, e.blocked) + (e.weak ? PART3.msgWeak : ""));
-    } else if (e.t === "down") S.msgs.push(PART3.msgDown(regionShort(mem(e.who))));
-    else if (e.t === "jp1") { S.msgs.push(PART3.jp1); console.log("[raid] japan event after boss turn", st.bossTurns); }
+      if (!unit || !unit.boss) { flush(); unit = { lines: [], chips: [], boss: true, hits: [], downs: [] }; }
+      unit.hits.push(e);
+    } else if (e.t === "down") {
+      if (unit && unit.boss) unit.downs.push(e.who);
+      else line(PART3.msgDown(regionShort(mem(e.who))));
+    }
+    else if (e.t === "jp1") { flush(); S.msgs.push(PART3.jp1); console.log("[raid] japan event after boss turn", st.bossTurns); }
     else if (e.t === "jp2") S.msgs.push(PART3.jp2);
     else if (e.t === "jpSwitch") { S.msgs.push(PART3.jpSwitch(mem(e.who).name || "모둠")); console.log("[raid] japan card switches", mem(e.who).name, "+HP", e.hp); }
     else if (e.t === "jpAlly") { S.msgs.push(PART3.jpAlly); console.log("[raid] japan joins boss (no japan card)"); }
     else if (e.t === "jpQ") S.msgs.push({ modal: true });
-    else if (e.t === "quiz") S.msgs.push(e.ok ? PART3.quizOk : PART3.quizNo(e.name, e.page, Math.round(RAID.quizWrongMul * 100), e.timeout));
     else if (e.t === "win" || e.t === "lose") console.log("[raid]", e.t, "boss turns", st.bossTurns);
   });
+  flush();
+}
+
+/* 대화창에 메시지 한 덩이를 그린다(버튼 안이라 span만 쓴다) */
+function renderMsg(box, m) {
+  if (typeof m === "string") { box.appendChild(el("span", "msg-line", m)); return; }
+  (m.lines || []).forEach(s => box.appendChild(el("span", "msg-line", s)));
+  if (m.chips && m.chips.length) {
+    const row = el("span", "msg-chips");
+    m.chips.forEach(s => row.appendChild(el("span", "msg-chip", s)));
+    box.appendChild(row);
+  }
+  (m.rows || []).forEach(r => {
+    const row = el("span", "msg-row");
+    row.appendChild(el("span", "msg-row-main", r.main));
+    if (r.sub) row.appendChild(el("span", "msg-row-sub", r.sub));
+    box.appendChild(row);
+  });
+  (m.after || []).forEach(s => box.appendChild(el("span", "msg-line msg-after", s)));
 }
 
 function nextMsg() {
@@ -1320,8 +1402,11 @@ function closeJpModal() {
   renderArena();
 }
 
+function allFull(st) { return teamIdx(st).every(j => st.members[j].hp >= st.members[j].max); }
+
 function doSkill(skill) {
   if (S.msgs.length || S.modalOpen || !S.raid || S.raid.over) return;
+  if (skill === "heal" && allFull(S.raid)) return;
   openQuiz(skill);
 }
 
@@ -1432,7 +1517,7 @@ function renderArena() {
   const mb = $("msgBox");
   const waiting = S.msgs.length > 0;
   mb.innerHTML = "";
-  if (waiting) { mb.appendChild(el("span", "msg-line", S.msgs[0])); mb.appendChild(el("small", "msg-next", PART3.tapNext)); }
+  if (waiting) { renderMsg(mb, S.msgs[0]); mb.appendChild(el("small", "msg-next", PART3.tapNext)); }
   else if (st.over) mb.appendChild(el("span", "msg-line", st.over === "win" ? PART3.winTitle : PART3.loseTitle));
   else if (cur >= 0) {
     const m = st.members[cur];
@@ -1451,7 +1536,8 @@ function renderArena() {
     const m = st.members[cur];
     btn(PART3.skillSpecial(m.mvName) + (canSpecial(m) ? "" : " · " + PART3.skillRest), () => doSkill("special"), !canSpecial(m), "sp");
     btn(PART3.skillGuard, () => doSkill("guard"));
-    btn(PART3.skillHeal, () => doSkill("heal"));
+    const full = allFull(st); // 모두 HP가 가득이면 힘 보태기는 회복 0이라 못 누르게(2026-11-16)
+    btn(PART3.skillHeal + (full ? " · " + PART3.skillFull : ""), () => doSkill("heal"), full);
     btn(PART3.rulesBtn, openRules, false, "dim");
   } else if (st.controller >= 0) {
     sk.appendChild(el("p", "ctrl-q", PART3.ctrlTurn(st.members[st.controller].name || "일본 카드 주인")));
@@ -1493,6 +1579,21 @@ function openFinal() {
   if (S.final) return;
   $("finalBox").hidden = false;
   $("who3Q").textContent = PART3.who3(S.name, S.sid);
+  renderMyCard3();
+}
+
+/* 마무리 질문 위에 기기 주인 카드 요약(힌트가 «필살기 칸을 다시 읽어 봐»라서). 카드가 없거나 기본 카드면 숨긴다(2026-11-16). */
+function renderMyCard3() {
+  const box = $("myCard3");
+  if (!box) return;
+  const m = S.final ? null : S.members.find(x => x.sid && x.sid === S.sid && !x.basic);
+  box.innerHTML = "";
+  box.hidden = !m;
+  if (!m) return;
+  const c = m.card;
+  box.appendChild(el("b", "my-card3-head", PART3.myCardTitle + " · " + regionName(c.region) + (c.sym ? " " + c.sym : "")));
+  if (c.mvName || c.w1) box.appendChild(el("p", "", "필살기 «" + oneLine(c.mvName) + "»: " + withPage(c.w1, c.pg1)));
+  if (c.w2) box.appendChild(el("p", "", "약점: " + withPage(c.w2, c.pg2)));
 }
 
 function finalOnly() {
@@ -1643,7 +1744,7 @@ function init() {
   $("jpGo").addEventListener("click", closeJpModal);
   $("raidRetry").addEventListener("click", retryRaid);
   preloadSpriteImages();
-  Glossary.start({ terms: GLOSSARY, unique: true, skip: ["[hidden]", ".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".pk", ".rank-list", ".stars", ".arena", ".member-list", ".modal"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
+  Glossary.start({ terms: GLOSSARY, unique: true, skip: ["[hidden]", ".eyebrow", "h1", ".sum-list b", ".rname", ".opt", ".sym", ".cell", ".trap", ".ghost", ".deck-nav", ".board-cols", ".toast", ".pk", ".rank-list", ".stars", ".arena", ".member-list", ".modal", ".my-card3"] }); // 어려운 낱말 풀이 (glossary.js). 칸 안은 누르기와 겹쳐 밑줄을 긋지 않는다
 }
 
 init();

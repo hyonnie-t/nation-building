@@ -242,14 +242,15 @@ t("필살기: 추진력 × 4 + 주사위, 다음 내 차례 한 번은 못 씀",
 
 t("막아서기는 이번 보스 차례 모둠 전체 피해에서 그만큼 빼고, 힘 보태기는 HP가 가장 낮은 동료를 회복", () => {
   const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)], "group");
-  L.act(st, "guard", half); // 3 × 2 = 6
-  L.act(st, "guard", half); // 4 × 2 = 8 → 합 14
-  assert.equal(st.shield, 14);
+  L.act(st, "guard", half); // 3 × guardPerStat
+  L.act(st, "guard", half); // 4 × guardPerStat → 합 7 × guardPerStat
+  const sh = 7 * ctx.RAID.guardPerStat;
+  assert.equal(st.shield, sh);
   const ev = L.bossTurn(st, () => 0.9, ""); // 약점 아님(0.9 ≥ 0.25), 주사위 6
   const hits = ev.filter(e => e.t === "boss");
   assert.equal(hits.length, 2); // 살아 있는 카드 모두를 친다
   const raw = ctx.RAID.group.bossAtk + 6;
-  assert.equal(hits[0].blocked + hits[1].blocked, Math.min(14, raw * 2));
+  assert.equal(hits[0].blocked + hits[1].blocked, Math.min(sh, raw * 2));
   assert.equal(st.shield, 0);
   st.members[1].hp = 10;
   const h = L.act(st, "heal", half);
@@ -321,6 +322,50 @@ t("일본 카드만 남았으면 넘기지 않는다(바로 지지 않게)", () 
   assert.equal(L.teamIdx(st).length, 2);
 });
 
+t("일본 카드 여러 장: 차례가 가장 앞선 살아 있는 한 장만 열강 편, 나머지는 모둠에 남는다(2026-11-16)", () => {
+  const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("japan", 3, 3, 3), mk("japan", 2, 3, 4), mk("japan", 4, 3, 2)], "group");
+  st.members.forEach(m => { m.hp = m.max = 200; });
+  st.members[1].hp = 0; st.members[1].down = true; // 앞선 일본 카드가 쓰러져 있으면 그다음 살아 있는 일본 카드
+  const ev = toThird(st);
+  assert.equal(ev.filter(e => e.t === "jpSwitch").length, 1);
+  assert.equal(J(st.members.map(m => m.foe)), J([false, false, true, false]));
+  assert.equal(st.controller, 2);
+  assert.equal(J(L.teamIdx(st)), J([0, 3]));
+});
+
+t("보스 HP의 일본 몫은 넘어갈 한 장만 센다(일본 카드만 있으면 0장)", () => {
+  const g = ctx.RAID.group, f = g.bossHpPer + (4 - g.base) * g.grow;
+  const one = L.newRaid([mk("ottoman", 3, 3, 3), mk("japan", 3, 3, 3), mk("thai", 3, 3, 3), mk("qing", 3, 3, 3)], "group").boss.max;
+  const three = L.newRaid([mk("ottoman", 3, 3, 3), mk("japan", 3, 3, 3), mk("japan", 3, 3, 3), mk("japan", 3, 3, 3)], "group").boss.max;
+  assert.equal(one, Math.round((4 - ctx.RAID.japanShare) * f));
+  assert.equal(three, one);
+  const allJp = L.newRaid([mk("japan", 3, 3, 3), mk("japan", 3, 3, 3)], "group").boss.max;
+  assert.equal(allJp, 2 * g.bossHpPer);
+});
+
+t("«무작위 공격»은 weakChance 확률로 약점, «약점 공격»은 늘 약점(2026-11-16)", () => {
+  const run = (choice, r) => {
+    const st = L.newRaid([mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)], "group");
+    st.members.forEach(m => { m.hp = m.max = 200; });
+    L.act(st, "guard", half); L.act(st, "guard", half); st.shield = 0;
+    return L.bossTurn(st, () => r, choice).filter(e => e.t === "boss").every(e => e.weak);
+  };
+  assert.equal(run("random", 0.1), true);   // 0.1 < weakChance
+  assert.equal(run("random", 0.9), false);
+  assert.equal(run("weak", 0.9), true);
+  assert.equal(run("", 0.9), false);
+});
+
+t("일본 이벤트 시점: 모둠은 세 번째, 최종 보스전은 두 번째 보스 차례 뒤", () => {
+  assert.equal(L.japanAfter({ mode: "group" }), 3);
+  assert.equal(L.japanAfter({ mode: "final" }), 2);
+  const st = L.newRaid(Array.from({ length: 6 }, (x, i) => mk(i ? "iran" : "japan", 3, 3, 3)), "final");
+  st.members.forEach(m => { m.hp = m.max = 500; });
+  let at = 0;
+  while (!at && st.bossTurns < 5) { if (L.currentActor(st) >= 0) L.act(st, "guard", half); else if (L.bossTurn(st, () => 0.9, "").some(e => e.t === "jp1")) at = st.bossTurns; }
+  assert.equal(at, 2);
+});
+
 t("보스 HP: 모둠 인원·최종 보스전 공식", () => {
   const two = [mk("ottoman", 5, 3, 1), mk("thai", 2, 4, 3)];
   const g = ctx.RAID.group, f = ctx.RAID.final;
@@ -340,17 +385,71 @@ t("도트 캐릭터: 지역 7 + 보스, 모두 16×16, 쓰는 글자는 배색�
   });
 });
 
-/* ── 균형 시뮬레이션(§5-6·§6): 무작위 별 9개 카드, 단순 전략, 각 1,000판 ── */
+/* ── 균형 시뮬레이션(§5-6·§6, 2026-11-16 정답률 넣음): 무작위 별 9개 카드, 단순 전략, 각 1,000판, 퀴즈 정답률 0.5·0.7·1.0 ── */
 const rows = report(ctx, s => console.log("  " + s));
-t("시뮬레이션: 모둠 60~80%, 최종 50~70%, 일본 포함이 10%p 넘게 낮지 않음, 보스 차례 평균 6~10번", () => {
-  rows.forEach(r => {
-    const [lo, hi] = r.mode === "final" ? [0.5, 0.7] : [0.6, 0.8];
-    assert.ok(r.win >= lo && r.win <= hi, J(r));
-    assert.ok(r.avgTurns >= 6 && r.avgTurns <= 10, J(r));
-    if (r.japan) {
-      const base = rows.find(x => x.mode === r.mode && x.size === r.size && !x.japan);
+t("시뮬레이션: 모둠 0.7 → 60~75%·1.0 → 92% 이하·0.5 → 35% 이상·보스 차례 6~9 / 최종 0.7 → 55~70%·0.5 → 30% 이상·보스 차례 4~5.5·일본 이벤트까지 95% 이상 / 일본 1~3장이 일본 없는 모둠보다 10%p 넘게 낮지 않음", () => {
+  rows.filter(r => r.strategy === "simple").forEach(r => {
+    const fin = r.mode === "final";
+    if (!r.japan) {
+      if (r.accuracy === 0.7) {
+        const [lo, hi] = fin ? [0.55, 0.70] : [0.60, 0.75];
+        assert.ok(r.win >= lo && r.win <= hi, J(r));
+        const [tlo, thi] = fin ? [4, 5.5] : [6, 9];
+        assert.ok(r.avgTurns >= tlo && r.avgTurns <= thi, J(r));
+      }
+      if (r.accuracy === 1 && !fin) assert.ok(r.win <= 0.92, J(r));
+      if (r.accuracy === 0.5) assert.ok(r.win >= (fin ? 0.30 : 0.35), J(r));
+    } else {
+      const base = rows.find(x => x.strategy === "simple" && x.mode === r.mode && x.size === r.size && x.accuracy === r.accuracy && !x.japan);
       assert.ok(base.win - r.win <= 0.10, J(r));
     }
+    if (fin) assert.ok(r.jpRate >= 0.95, J(r));
+  });
+});
+
+/* 2026-11-16 재검토: 막아서기 × 4가 되면서 막아서기만 누르면 판이 끝나지 않았다 → rageAfter부터 보스 공격이 세진다 */
+const guardOnly = (stars, size, mode, seed) => {
+  const rng = L.seeded(seed);
+  const ms = Array.from({ length: size }, (x, i) => L.raidMember({ region: ["ottoman", "iran", "india", "thai", "qing", "joseon"][i % 6], stats: { lead: { n: stars[0] }, guard: { n: stars[1] }, unity: { n: stars[2] } } }, { sid: "2" + i, name: "학생" + i }));
+  const st = L.newRaid(ms, mode);
+  let g = 0;
+  while (!st.over && st.bossTurns <= 60 && g++ < 5000) { if (L.currentActor(st) >= 0) L.act(st, "guard", rng, 1); else L.bossTurn(st, rng, ""); }
+  return st;
+};
+t("막아서기만 누르는 모둠(별 1·5·3, 2·5·2, 3·3·3 / 2·3·4명)과 최종 8명은 보스 차례 25번 안에 진다", () => {
+  const cases = [], out = [];
+  [[1, 5, 3], [2, 5, 2], [3, 3, 3]].forEach(s => [2, 3, 4].forEach(n => cases.push([s, n, "group"])));
+  [[1, 5, 3], [2, 5, 2], [3, 3, 3]].forEach(s => cases.push([s, 8, "final"]));
+  cases.forEach(([s, n, mode]) => {
+    let sum = 0, max = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const st = guardOnly(s, n, mode, seed);
+      assert.equal(st.over, "lose", J({ s, n, mode, seed, turns: st.bossTurns }));
+      assert.ok(st.bossTurns <= 25, J({ s, n, mode, seed, turns: st.bossTurns }));
+      sum += st.bossTurns; max = Math.max(max, st.bossTurns);
+    }
+    out.push((mode === "final" ? "최종 " : "모둠 ") + n + "명 별 " + s.join("·") + " 평균 " + (sum / 20).toFixed(1) + "(최대 " + max + ")");
+  });
+  console.log("  막아서기만: " + out.join(" / "));
+});
+
+t("공격이 세지는 차례: rageAfter번째 보스 차례부터 보스 차례마다 rageStep씩(최종은 final.rageAfter)", () => {
+  const R = ctx.RAID;
+  const st = L.newRaid([mk("ottoman", 3, 3, 3), mk("thai", 3, 3, 3)], "group");
+  st.members.forEach(m => { m.hp = m.max = 50000; });
+  const atk0 = st.boss.atk;
+  const rageAt = [];
+  while (st.bossTurns < R.rageAfter + 2) { if (L.currentActor(st) >= 0) L.act(st, "guard", half); else if (L.bossTurn(st, () => 0.9, "").some(e => e.t === "rage")) rageAt.push(st.bossTurns); }
+  assert.equal(J(rageAt), J([R.rageAfter, R.rageAfter + 1, R.rageAfter + 2]));
+  assert.equal(st.boss.atk, atk0 + R.noJapanAtk + 3 * R.rageStep);
+  assert.ok(R.final.rageAfter < R.rageAfter);
+});
+
+/* 2026-11-16 검토: 막아서기가 힘 보태기보다 너무 약해 전략에 따라 승률이 크게 갈렸다. «막아서기만 계속»이 못 이기는 것은 그대로 둔다. */
+t("시뮬레이션(전략): 정답률 0.7 모둠에서 막아서기 위주 45% 이상, 힘 보태기 위주 90% 이하(기본 카드만인 모둠 포함)", () => {
+  rows.filter(r => r.mode === "group" && r.accuracy === 0.7).forEach(r => {
+    if (r.strategy === "guard") assert.ok(r.win >= 0.45, J(r));
+    if (r.strategy === "heal") assert.ok(r.win <= 0.90, J(r));
   });
 });
 
