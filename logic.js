@@ -295,6 +295,10 @@ function japanAfter(st) { const cfg = RAID[st.mode] || {}; return cfg.japanAfter
 function bossTurn(st, rng, choice) {
   if (st.over || currentActor(st) >= 0) return [];
   const ev = [];
+  /* 2026-11-16 재검토: 막아서기 × 4가 되면서 막아서기만 누르면 판이 끝나지 않았다.
+   * rageAfter번째 보스 차례부터 보스 차례마다 공격이 rageStep씩 세진다(게임 장치). */
+  const cfg = RAID[st.mode] || {};
+  if (st.bossTurns + 1 >= (cfg.rageAfter || RAID.rageAfter)) { st.boss.atk += RAID.rageStep; ev.push({ t: "rage" }); }
   const team = teamIdx(st).slice();
   const hits = Math.min(team.length, Math.ceil(team.length / RAID.bossHitsPer)); // 모둠이 클수록 한 번에 여럿을 친다
   const weak = choice === "weak" ? true : rng() < RAID.weakChance;

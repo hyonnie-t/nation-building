@@ -1335,6 +1335,7 @@ function pushEvents(evs) {
         unit.downs.forEach(i => unit.lines.push(PART3.msgDown(label(i))));
       }
     }
+    if (unit.rage) unit.lines.unshift(PART3.msgRage); // 보스 차례가 길어져 공격이 세질 때 덩이 첫머리에 한 줄
     S.msgs.push({ lines: unit.lines, chips: unit.chips, rows: unit.rows || [], after: unit.after || [] });
     unit = null;
   };
@@ -1345,6 +1346,7 @@ function pushEvents(evs) {
     else if (e.t === "special") { line(PART3.msgSpecial(regionShort(mem(e.who)), mem(e.who).mvName, e.dmg)); flush(); }
     else if (e.t === "guard") { line(PART3.msgGuard(regionShort(mem(e.who)), e.amt)); flush(); }
     else if (e.t === "heal") { line(PART3.msgHeal(regionShort(mem(e.who)), regionShort(mem(e.to)), e.amt)); flush(); }
+    else if (e.t === "rage") { flush(); unit = { lines: [], chips: [], boss: true, hits: [], downs: [], rage: true }; }
     else if (e.t === "boss") {
       if (!unit || !unit.boss) { flush(); unit = { lines: [], chips: [], boss: true, hits: [], downs: [] }; }
       unit.hits.push(e);

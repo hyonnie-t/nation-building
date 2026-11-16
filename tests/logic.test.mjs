@@ -407,6 +407,44 @@ t("시뮬레이션: 모둠 0.7 → 60~75%·1.0 → 92% 이하·0.5 → 35% 이�
   });
 });
 
+/* 2026-11-16 재검토: 막아서기 × 4가 되면서 막아서기만 누르면 판이 끝나지 않았다 → rageAfter부터 보스 공격이 세진다 */
+const guardOnly = (stars, size, mode, seed) => {
+  const rng = L.seeded(seed);
+  const ms = Array.from({ length: size }, (x, i) => L.raidMember({ region: ["ottoman", "iran", "india", "thai", "qing", "joseon"][i % 6], stats: { lead: { n: stars[0] }, guard: { n: stars[1] }, unity: { n: stars[2] } } }, { sid: "2" + i, name: "학생" + i }));
+  const st = L.newRaid(ms, mode);
+  let g = 0;
+  while (!st.over && st.bossTurns <= 60 && g++ < 5000) { if (L.currentActor(st) >= 0) L.act(st, "guard", rng, 1); else L.bossTurn(st, rng, ""); }
+  return st;
+};
+t("막아서기만 누르는 모둠(별 1·5·3, 2·5·2, 3·3·3 / 2·3·4명)과 최종 8명은 보스 차례 25번 안에 진다", () => {
+  const cases = [], out = [];
+  [[1, 5, 3], [2, 5, 2], [3, 3, 3]].forEach(s => [2, 3, 4].forEach(n => cases.push([s, n, "group"])));
+  [[1, 5, 3], [2, 5, 2], [3, 3, 3]].forEach(s => cases.push([s, 8, "final"]));
+  cases.forEach(([s, n, mode]) => {
+    let sum = 0, max = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const st = guardOnly(s, n, mode, seed);
+      assert.equal(st.over, "lose", J({ s, n, mode, seed, turns: st.bossTurns }));
+      assert.ok(st.bossTurns <= 25, J({ s, n, mode, seed, turns: st.bossTurns }));
+      sum += st.bossTurns; max = Math.max(max, st.bossTurns);
+    }
+    out.push((mode === "final" ? "최종 " : "모둠 ") + n + "명 별 " + s.join("·") + " 평균 " + (sum / 20).toFixed(1) + "(최대 " + max + ")");
+  });
+  console.log("  막아서기만: " + out.join(" / "));
+});
+
+t("공격이 세지는 차례: rageAfter번째 보스 차례부터 보스 차례마다 rageStep씩(최종은 final.rageAfter)", () => {
+  const R = ctx.RAID;
+  const st = L.newRaid([mk("ottoman", 3, 3, 3), mk("thai", 3, 3, 3)], "group");
+  st.members.forEach(m => { m.hp = m.max = 50000; });
+  const atk0 = st.boss.atk;
+  const rageAt = [];
+  while (st.bossTurns < R.rageAfter + 2) { if (L.currentActor(st) >= 0) L.act(st, "guard", half); else if (L.bossTurn(st, () => 0.9, "").some(e => e.t === "rage")) rageAt.push(st.bossTurns); }
+  assert.equal(J(rageAt), J([R.rageAfter, R.rageAfter + 1, R.rageAfter + 2]));
+  assert.equal(st.boss.atk, atk0 + R.noJapanAtk + 3 * R.rageStep);
+  assert.ok(R.final.rageAfter < R.rageAfter);
+});
+
 /* 2026-11-16 검토: 막아서기가 힘 보태기보다 너무 약해 전략에 따라 승률이 크게 갈렸다. «막아서기만 계속»이 못 이기는 것은 그대로 둔다. */
 t("시뮬레이션(전략): 정답률 0.7 모둠에서 막아서기 위주 45% 이상, 힘 보태기 위주 90% 이하(기본 카드만인 모둠 포함)", () => {
   rows.filter(r => r.mode === "group" && r.accuracy === 0.7).forEach(r => {
