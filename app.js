@@ -763,7 +763,7 @@ let winPollTimer = 0, winTickTimer = 0;
 function scheduleWindowPoll() {
   clearTimeout(winPollTimer);
   if (!S.win || !S.win.timed) return;
-  winPollTimer = setTimeout(async () => { const was = classOpen(); await loadWindow(); if (was !== classOpen()) { renderSummary(); } renderWindow(); }, classOpen() === false ? 60000 : 300000);
+  winPollTimer = setTimeout(async () => { const was = classOpen(); await loadWindow(); if (was !== classOpen()) { renderSummary(); } renderWindow(); }, (classOpen() === false || !S.win.started) ? 60000 : 300000); // 반 시작 전에도 1분마다(검토 지적: 시작 띠가 5분 늦게 뜸)
   clearInterval(winTickTimer);
   winTickTimer = setInterval(renderWindow, 1000);
 }
