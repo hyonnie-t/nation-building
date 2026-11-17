@@ -475,6 +475,15 @@ t("단서 퀴즈: 보기에 정답이 있고 겹치지 않으며, 21장을 다 �
   assert.equal(col.kind, "col"); assert.equal(col.choices.length, 3);
 });
 
+t("단서 퀴즈 시간: 문장 길이에 따라 12~20초(39자 13초, 69자 17초, 95자 20초)", () => {
+  const s = n => L.quizSecondsFor("가".repeat(n));
+  assert.equal(s(39), 13); assert.equal(s(69), 17); assert.equal(s(95), 20);
+  assert.equal(s(0), 12); assert.equal(s(10), 12); assert.equal(s(200), 20);
+  assert.equal(L.quizSecondsFor(null), 12);
+  for (let n = 1; n < 120; n++) assert.ok(s(n) >= s(n - 1), "길수록 줄지 않음 " + n);
+  CARDS.forEach(k => { const v = L.quizSecondsFor(k.t); assert.ok(v >= 12 && v <= 20, k.id + " " + v); });
+});
+
 t("퀴즈 위력 배율: power 0.6이면 필살기·막아서기·힘 보태기가 반올림한 60%", () => {
   const mk = region => L.raidMember({ region, mvName: "m", stats: { lead: { n: 5 }, guard: { n: 3 }, unity: { n: 4 } } }, { sid: "1", name: "a" }, false);
   const full = L.newRaid([mk("qing"), mk("iran")], "group");

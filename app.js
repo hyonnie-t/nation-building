@@ -1410,14 +1410,15 @@ function doSkill(skill) {
   openQuiz(skill);
 }
 
-/* ── 단서 퀴즈(수학몬식): 기술을 고르면 10초 퀴즈 → 맞히면 풀 위력, 틀리면 RAID.quizWrongMul ── */
+/* ── 단서 퀴즈(수학몬식): 기술을 고르면 문장 길이에 따라 12~20초 퀴즈(quizSecondsFor) → 맞히면 풀 위력, 틀리면 RAID.quizWrongMul ── */
 function skillLabel(skill) {
   const m = S.raid.members[currentActor(S.raid)];
   return skill === "special" ? PART3.skillSpecial(m.mvName) : skill === "heal" ? PART3.skillHeal : PART3.skillGuard;
 }
 function openQuiz(skill) {
   const q = makeQuiz(CARDS, REGIONS, COLS, Math.random, S.quizUsed);
-  S.quiz = { skill: skill, q: q, left: RAID.quizSeconds, timer: 0 };
+  const sec = quizSecondsFor(q.text);
+  S.quiz = { skill: skill, q: q, left: sec, total: sec, timer: 0 };
   S.modalOpen = true;
   $("quizQ").textContent = q.kind === "region" ? PART3.quizRegionQ : PART3.quizColQ;
   $("quizText").textContent = q.text;
@@ -1434,7 +1435,7 @@ function tickQuiz() {
   const z = S.quiz;
   if (!z) return;
   $("quizTimer").textContent = PART3.quizTimer(z.left);
-  $("quizBar").style.width = (z.left / RAID.quizSeconds * 100) + "%";
+  $("quizBar").style.width = (z.left / z.total * 100) + "%";
   if (z.left <= 0) { answerQuiz(null); return; }
   z.left--;
 }
