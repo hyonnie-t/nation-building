@@ -138,7 +138,9 @@ const RAID = {
   rageAfter: 13, rageStep: 4, // 13번째 보스 차례부터(최종은 final.rageAfter) 보스 차례마다 공격 +4 — 막아서기만 눌러도 판이 끝나게(2026-11-16 재검토, 9·+3은 기본 전략 모둠 승률을 60% 밑으로 내려 늦춤)
   textMax: 30,
   quizWrongMul: 0.8,       // 단서 퀴즈를 틀리면 그 기술의 위력 배율(맞히면 1). 2026-11-16 0.6 → 0.8(정답률에 따라 승률이 너무 크게 갈렸다)
-  quizSeconds: 10,         // 퀴즈 제한 시간(초)
+  /* 퀴즈 제한 시간(초) = clamp(round(quizSecBase + 글자 수 / quizCharsPerSec), quizSecMin, quizSecMax) — 카드 문장이 39~95자라 10초는 중2에게 짧았다(2026-11-17).
+   * 39자 → 13초, 69자 → 17초, 95자 → 20초. 계산은 logic.js quizSecondsFor. */
+  quizSecBase: 8, quizCharsPerSec: 8, quizSecMin: 12, quizSecMax: 20,
   basicMove: "함께 버티기",
   /* 보스 HP = (인원 − 넘어갈 일본 카드 1장 × japanShare) × (bossHpPer + (인원 − base) × grow). 인원이 많을수록 운이 고르게 나와 쉬워지는 것을 grow로 맞춘다.
    * 최종 보스전(final)은 12분 안에 끝나게 보스 HP를 낮추고 공격을 높였다(보스 차례 평균 4~5번), 일본 이벤트는 두 번째 보스 차례 뒤(japanAfter),
@@ -272,7 +274,7 @@ const PART3 = {
     "필살기: 개혁 추진력만큼 세게 공격해. 쓰고 나면 다음 내 차례 한 번은 쉬어.",
     "막아서기: 이번 열강 차례에 모둠이 받는 피해를 외세 방어력만큼 줄여.",
     "힘 보태기: HP가 가장 낮은 친구를 나라 안 단결력만큼 회복해.",
-    "기술을 고르면 단서 퀴즈가 " + RAID.quizSeconds + "초 떠. 맞히면 풀 위력, 틀리면 위력 " + Math.round(RAID.quizWrongMul * 100) + "%야(답과 교과서 쪽수를 알려 줘).",
+    "기술을 고르면 단서 퀴즈가 떠(문장 길이에 따라 " + RAID.quizSecMin + "~" + RAID.quizSecMax + "초). 맞히면 풀 위력, 틀리면 위력 " + Math.round(RAID.quizWrongMul * 100) + "%야(답과 교과서 쪽수를 알려 줘).",
     "열강의 HP를 0으로 만들면 이겨. 모두 쓰러지면 져."
   ],
   bossName: "열강",

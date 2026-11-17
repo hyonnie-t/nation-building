@@ -287,6 +287,13 @@ function makeQuiz(cards, regions, cols, rng, used, kind) {
   return { id: card.id, text: card.t, page: card.p, kind: kind, choices: choices, answer: answer, answerName: choices.find(c => c.id === answer).name };
 }
 
+/* 단서 퀴즈 제한 시간(초): 문장이 길수록 길게(2026-11-17). 글자 수는 공백 포함 낱자 수. */
+function quizSecondsFor(text) {
+  const n = Array.from(String(text == null ? "" : text)).length;
+  const s = Math.round(RAID.quizSecBase + n / RAID.quizCharsPerSec);
+  return Math.max(RAID.quizSecMin, Math.min(RAID.quizSecMax, s));
+}
+
 /* 일본 이벤트가 일어나는 보스 차례(최종 보스전은 RAID.final.japanAfter로 앞당긴다) */
 function japanAfter(st) { const cfg = RAID[st.mode] || {}; return cfg.japanAfter || RAID.japanAfter; }
 
@@ -433,4 +440,4 @@ function deadlineText(firstAt, hours) {
 }
 
 if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
-  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
+  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, quizSecondsFor, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
