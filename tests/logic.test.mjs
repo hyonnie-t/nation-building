@@ -503,6 +503,11 @@ t("모둠 자동 불러오기(planGroupMembers): 주인 먼저, 카드 없는 �
   p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나"), mem("20103", "주인"), mem("20104", "라", "[역사 카드] 없는지역 · 라이벌 청")]), "20103", 4, parse);
   assert.equal(J(p.add.map(m => m.sid)), J(["20101"]));
   assert.equal(J(p.noCard.map(m => m.sid)), J(["20103", "20102", "20104"]));
+  // 5명 모둠에서 카드 없는 모둠원이 자리가 없으면 over로(말없이 빠지지 않음)
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", card), mem("20103", "주인", card), mem("20104", "라"), mem("20105", "마")]), "20103", 4, parse);
+  assert.equal(p.add.length, 3); assert.equal(J(p.noCard.map(m => m.sid)), J(["20104"])); assert.equal(J(p.over), J([{ sid: "20105", name: "마" }]));
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", card), mem("20103", "주인", card), mem("20104", "라", card), mem("20105", "마")]), "20103", 4, parse);
+  assert.equal(p.add.length, 4); assert.equal(p.noCard.length, 0); assert.equal(J(p.over.map(m => m.sid)), J(["20105"]));
   // 같은 학번 두 번·학번 형식 오류는 버림, 공백 섞인 학번은 붙여 읽음
   p = L.planGroupMembers(ok([mem("20103", "주인", card), mem("20103", "또", card), mem("2010", "짧음", card), mem(" 20102 ", "나", card)]), "20103", 4, parse);
   assert.equal(J(p.add.map(m => m.sid)), J(["20103", "20102"]));

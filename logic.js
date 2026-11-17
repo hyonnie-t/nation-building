@@ -287,7 +287,7 @@ function makeQuiz(cards, regions, cols, rng, used, kind) {
   return { id: card.id, text: card.t, page: card.p, kind: kind, choices: choices, answer: answer, answerName: choices.find(c => c.id === answer).name };
 }
 
-/* 3부 모둠 자동 불러오기(2026-11-17): 백엔드 v178 mode=sharedGroupCards 응답 → { group, add, noCard, over }.
+/* 3부 모둠 자동 불러오기(2026-11-17): 백엔드 v179 mode=sharedGroupCards 응답 → { group, add, noCard, over }.
  * add: 목록에 넣을 카드(주인 먼저, 나머지는 응답 순서, 최대 max장), noCard: 카드가 없거나 못 읽는 모둠원(기본 카드로 이어 감),
  * over: 카드는 있지만 자리가 없어 못 넣은 모둠원. 응답 모양이 다르거나 주인이 목록에 없으면 null(지금 동작으로 돌아간다).
  * parse(text) → 카드 또는 null(app.js는 parseCardText). 같은 학번이 두 번 오면 앞의 것만. */
@@ -310,7 +310,9 @@ function planGroupMembers(resp, ownerSid, max, parse) {
     else if (add.length >= max) over.push({ sid: m.sid, name: m.name });
     else add.push({ sid: m.sid, name: m.name, card: card, basic: false });
   });
-  return { group: Number(resp.group) || 0, add: add, noCard: noCard, over: over };
+  /* 카드 없는 모둠원도 남은 자리만큼만 기본 카드 차례에 넣고, 넘치면 over로(말없이 빠지지 않게, 2026-11-17 검토) */
+  const room = Math.max(0, max - add.length);
+  return { group: Number(resp.group) || 0, add: add, noCard: noCard.slice(0, room), over: over.concat(noCard.slice(room)) };
 }
 
 /* 단서 퀴즈 제한 시간(초): 문장이 길수록 길게(2026-11-17). 글자 수는 공백 포함 낱자 수. */
