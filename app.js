@@ -1148,7 +1148,9 @@ function spriteEl(id, opts) {
 /* ══ 3부: 열강 보스 레이드 ══ 카드는 포털 기록(mode=student)의 2차시 G열 글에서 되살린다.
  * 친구 카드: mode=student는 이 기기에 로그인한 학생 것만 주므로(studentGate_), 친구 카드는 백엔드 v106 mode=sharedCard
  * (허용 활동의 G열만, 학번+이름 일치)로 읽는다. 마무리 글 제출은 서버가 «로그인한 본인 학번»만 받으므로 이 기기를 연 학생만 내고,
- * 친구들은 각자 자기 기기에서 3차시를 열어 «마무리만 쓰기»로 낸다. */
+ * 친구들은 각자 자기 기기에서 3차시를 열어 «마무리만 쓰기»로 낸다.
+ * 2026-11-17: 선생님이 확정한 수업 모둠이 있으면 처음 열 때 백엔드 v179 mode=sharedGroupCards로 모둠원 카드를 한꺼번에 넣는다(fetchGroupCards).
+ * 되살린 목록이 있거나 최종 보스전·미리보기면 부르지 않는다. 실패하면 옛 흐름(주인 카드만 자동 + 손으로 추가) 그대로. */
 const MAX_MEMBERS = () => S.final ? 8 : 4;
 const PREVIEW_REGIONS = ["ottoman", "thai", "japan", "joseon"];
 const ROW_TEXT_MAX = 14; // 모둠 보스 차례에 3장 이상 맞았을 때 카드 글을 이만큼만(폰 한 화면에 들게, 2026-11-16)
@@ -1175,6 +1177,25 @@ async function fetchCard(sid, name) {
   if (sid === S.sid) return fetchMyCard(sid, name);
   throw new Error("친구 카드를 불러오지 못했어.");
 }
+
+/* 모둠 친구 카드 한꺼번에(백엔드 v179 mode=sharedGroupCards, 2026-11-17). 선생님이 확정한 수업 모둠을 기기 주인 학번+이름으로 찾는다.
+ * 옛 백엔드(새 mode 없음)·모둠 미확정·로그인 불일치·네트워크 오류·GROUP_FETCH_MS 넘김은 모두 null → loadFirstMember가 지금 동작(주인 카드만 자동)으로 간다. */
+const GROUP_FETCH_MS = 10000; // 백엔드가 몰려 늦으면(2026-11-17 오전 doGet 31~89초) 기다리지 않고 옛 흐름으로
+async function fetchGroupCards(sid, name) {
+  const url = CONFIG.SHEET_WEBAPP_URL + "?mode=sharedGroupCards&activityId=" + encodeURIComponent(CONFIG.GAME_NAMES[2])
+    + "&studentId=" + encodeURIComponent(sid) + "&name=" + encodeURIComponent(name);
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = setTimeout(() => { if (ctl) ctl.abort(); }, GROUP_FETCH_MS);
+  let json = null;
+  try {
+    json = await Promise.race([
+      fetch(url, ctl ? { signal: ctl.signal } : undefined).then(r => r.json()),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), GROUP_FETCH_MS + 50)) // signal을 무시하는 환경 대비
+    ]);
+  } catch (e) { return null; } finally { clearTimeout(timer); }
+  return planGroupMembers(json, sid, MAX_MEMBERS(), t => parseCardText(t, REGIONS, STATS));
+}
+const whoText = list => list.map(m => m.name || m.sid).join(", ");
 
 function addMember(m) {
   if (S.members.some(x => x.sid && x.sid === m.sid)) { $("mErr").textContent = "이미 불러온 학번이야."; return false; }
@@ -1260,7 +1281,22 @@ function joinBasic() {
   const card = { region: S.basicRegion, sym: LOOK[S.basicRegion].syms[0], stats: { lead: { n: 3 }, guard: { n: 3 }, unity: { n: 3 } } };
   if (addMember({ sid: b.sid, name: b.name, card, basic: true })) {
     $("basicBox").hidden = true; $("mErr").textContent = ""; $("mSid").value = ""; $("mName").value = "";
+    nextBasic();
   }
+}
+
+/* 모둠 자동 불러오기에서 카드가 없던 모둠원을 차례로 기본 카드 칸에 올린다(이미 들어왔거나 자리가 차면 건너뜀). */
+function nextBasic() {
+  const q = S.basicQueue || [];
+  while (q.length && S.members.some(x => x.sid === q[0].sid)) q.shift();
+  if (!q.length || S.members.length >= MAX_MEMBERS()) {
+    S.basicQueue = [];
+    if (S.groupMsgBase != null) $("p3Msg").textContent = S.groupMsgBase; // 기본 카드 안내가 끝났으면 그 줄을 지운다
+    return;
+  }
+  const m = q.shift();
+  $("mSid").value = m.sid; $("mName").value = m.name;
+  showBasic(m.sid, m.name);
 }
 
 /* 이 기기를 연 학생(포털에서 들어오면 학번·이름이 자동)은 자동으로 */
@@ -1275,13 +1311,38 @@ async function loadFirstMember() {
   const restored = restoreMembers(); // 새로고침 전에 불러온 모둠원을 되살린다
   if (S.final || !S.sid || restored) { renderMembers(); return; } // 되살렸으면 주인 카드를 다시 넣지 않는다(주인이 «빼기»했을 수 있다, 2026-11-16 검토)
   $("p3Msg").textContent = PART3.loadingMsg;
+  /* 2026-11-17: 확정 모둠이 있으면 친구 카드까지 한꺼번에. 안 되면 아래 옛 흐름(주인 카드만 자동) */
+  const plan = await fetchGroupCards(S.sid, S.name);
+  if (S.raid) return; // 기다리는 사이 손으로 넣고 레이드를 시작했으면 늦은 응답은 버린다(목록을 건드리지 않음)
+  if (plan) {
+    const over = plan.over.slice();
+    plan.add.forEach(m => {
+      if (S.members.some(x => x.sid === m.sid)) return; // 기다리는 사이 손으로 먼저 넣은 친구
+      if (S.members.length >= MAX_MEMBERS()) { over.push(m); return; }
+      addMember(m.sid === S.sid ? Object.assign({}, m, { name: S.name }) : m); // 주인 이름은 로그인 이름 그대로(마무리 제출에 쓴다)
+    });
+    const waiting = plan.noCard.filter(m => !S.members.some(x => x.sid === m.sid)).map(m => (m.sid === S.sid ? { sid: m.sid, name: S.name } : m));
+    const room = Math.max(0, MAX_MEMBERS() - S.members.length);
+    const noCard = waiting.slice(0, room);
+    waiting.slice(room).forEach(m => over.push(m)); // 자리가 없는 카드 없는 모둠원도 안내에 넣는다
+    const base = S.members.length ? [PART3.groupLoaded(plan.group)] : []; // 모둠원 모두 카드가 없으면 «불러왔어»를 쓰지 않는다
+    if (over.length) base.push(PART3.groupOver(whoText(over), MAX_MEMBERS()));
+    S.groupMsgBase = base.join(" ");
+    $("p3Msg").textContent = base.concat(noCard.length ? [PART3.groupNoCard(whoText(noCard))] : []).join(" ");
+    S.basicQueue = noCard;
+    nextBasic();
+    renderMembers();
+    return;
+  }
   try {
     const card = await fetchCard(S.sid, S.name);
+    if (S.raid) return; // 늦은 응답은 버린다
     if (card) { addMember({ sid: S.sid, name: S.name, card, basic: false }); $("p3Msg").textContent = ""; return; }
     $("p3Msg").textContent = PART3.notFound;
   } catch (e) {
     $("p3Msg").textContent = (e.message ? e.message + " " : "") + PART3.notFound;
   }
+  if (S.raid) return;
   $("mSid").value = S.sid; $("mName").value = S.name;
   showBasic(S.sid, S.name);
   renderMembers();

@@ -484,6 +484,41 @@ t("단서 퀴즈 시간: 문장 길이에 따라 12~20초(39자 13초, 69자 17�
   CARDS.forEach(k => { const v = L.quizSecondsFor(k.t); assert.ok(v >= 12 && v <= 20, k.id + " " + v); });
 });
 
+t("모둠 자동 불러오기(planGroupMembers): 주인 먼저, 카드 없는 모둠원·자리 없는 모둠원 나눔, 이상한 응답은 null", () => {
+  const parse = s => L.parseCardText(s, REGIONS, ctx.STATS);
+  const card = L.cardText(sample, REGIONS, ctx.STATS);
+  const oldName = "[역사 카드] 청 🐉 · 라이벌 일본\n⚡ 개혁 추진력 ★2\n🛡️ 외세 방어력 ★2\n🤝 안의 단결력 ★5: 옛 근거 (183쪽)";
+  const mem = (sid, name, text) => text ? { studentId: sid, name, found: true, reflection: text } : { studentId: sid, name, found: false };
+  const ok = (members, group) => ({ result: "success", found: true, group: group || 2, members });
+  // 4명: 주인이 셋째여도 맨 앞, 나머지는 응답 순서
+  let p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", oldName), mem("20103", "주인", card), mem("20104", "라", card)]), "20103", 4, parse);
+  assert.equal(J(p.add.map(m => m.sid)), J(["20103", "20101", "20102", "20104"]));
+  assert.equal(p.group, 2); assert.equal(p.noCard.length, 0); assert.equal(p.over.length, 0);
+  assert.equal(p.add[2].card.region, "qing"); assert.equal(p.add[2].card.stats.unity.n, 5, "옛 능력치 이름 카드도 읽는다");
+  assert.ok(p.add.every(m => m.basic === false));
+  // 5명 모둠: 앞에서부터 4장, 다섯째는 over
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", card), mem("20103", "주인", card), mem("20104", "라", card), mem("20105", "마", card)]), "20103", 4, parse);
+  assert.equal(p.add.length, 4); assert.equal(J(p.over), J([{ sid: "20105", name: "마" }]));
+  // 카드 없는 모둠원·머리말이 깨진 글·주인 카드 없음 → noCard(주인 먼저), 자리는 카드 있는 친구만 셈
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나"), mem("20103", "주인"), mem("20104", "라", "[역사 카드] 없는지역 · 라이벌 청")]), "20103", 4, parse);
+  assert.equal(J(p.add.map(m => m.sid)), J(["20101"]));
+  assert.equal(J(p.noCard.map(m => m.sid)), J(["20103", "20102", "20104"]));
+  // 5명 모둠에서 카드 없는 모둠원이 자리가 없으면 over로(말없이 빠지지 않음)
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", card), mem("20103", "주인", card), mem("20104", "라"), mem("20105", "마")]), "20103", 4, parse);
+  assert.equal(p.add.length, 3); assert.equal(J(p.noCard.map(m => m.sid)), J(["20104"])); assert.equal(J(p.over), J([{ sid: "20105", name: "마" }]));
+  p = L.planGroupMembers(ok([mem("20101", "가", card), mem("20102", "나", card), mem("20103", "주인", card), mem("20104", "라", card), mem("20105", "마")]), "20103", 4, parse);
+  assert.equal(p.add.length, 4); assert.equal(p.noCard.length, 0); assert.equal(J(p.over.map(m => m.sid)), J(["20105"]));
+  // 같은 학번 두 번·학번 형식 오류는 버림, 공백 섞인 학번은 붙여 읽음
+  p = L.planGroupMembers(ok([mem("20103", "주인", card), mem("20103", "또", card), mem("2010", "짧음", card), mem(" 20102 ", "나", card)]), "20103", 4, parse);
+  assert.equal(J(p.add.map(m => m.sid)), J(["20103", "20102"]));
+  // 최종 보스전 크기(8)도 같은 함수
+  assert.equal(L.planGroupMembers(ok([mem("20101", "가", card), mem("20103", "주인", card)]), "20103", 8, parse).add.length, 2);
+  // 지금 동작으로 돌아가야 하는 응답
+  [null, {}, { result: "success", found: false }, { result: "error", message: "인증 실패" }, { result: "error", needLogin: true },
+    { result: "success", found: true, group: 1 }, ok([mem("20101", "가", card)]), { rows: [], teacher: "x" }]
+    .forEach(r => assert.equal(L.planGroupMembers(r, "20103", 4, parse), null, J(r)));
+});
+
 t("퀴즈 위력 배율: power 0.6이면 필살기·막아서기·힘 보태기가 반올림한 60%", () => {
   const mk = region => L.raidMember({ region, mvName: "m", stats: { lead: { n: 5 }, guard: { n: 3 }, unity: { n: 4 } } }, { sid: "1", name: "a" }, false);
   const full = L.newRaid([mk("qing"), mk("iran")], "group");

@@ -287,6 +287,34 @@ function makeQuiz(cards, regions, cols, rng, used, kind) {
   return { id: card.id, text: card.t, page: card.p, kind: kind, choices: choices, answer: answer, answerName: choices.find(c => c.id === answer).name };
 }
 
+/* 3부 모둠 자동 불러오기(2026-11-17): 백엔드 v179 mode=sharedGroupCards 응답 → { group, add, noCard, over }.
+ * add: 목록에 넣을 카드(주인 먼저, 나머지는 응답 순서, 최대 max장), noCard: 카드가 없거나 못 읽는 모둠원(기본 카드로 이어 감),
+ * over: 카드는 있지만 자리가 없어 못 넣은 모둠원. 응답 모양이 다르거나 주인이 목록에 없으면 null(지금 동작으로 돌아간다).
+ * parse(text) → 카드 또는 null(app.js는 parseCardText). 같은 학번이 두 번 오면 앞의 것만. */
+function planGroupMembers(resp, ownerSid, max, parse) {
+  if (!resp || resp.result !== "success" || resp.found !== true || !Array.isArray(resp.members)) return null;
+  const seen = {}, list = [];
+  resp.members.forEach(m => {
+    const sid = String((m && m.studentId) || "").replace(/\s+/g, "");
+    if (!/^\d{5}$/.test(sid) || seen[sid]) return;
+    seen[sid] = true;
+    list.push({ sid: sid, name: String(m.name || "").trim(), text: m.found && typeof m.reflection === "string" ? m.reflection : "" });
+  });
+  const own = list.findIndex(m => m.sid === ownerSid);
+  if (own < 0) return null;
+  list.unshift(list.splice(own, 1)[0]);
+  const add = [], noCard = [], over = [];
+  list.forEach(m => {
+    const card = m.text ? parse(m.text) : null;
+    if (!card) noCard.push({ sid: m.sid, name: m.name });
+    else if (add.length >= max) over.push({ sid: m.sid, name: m.name });
+    else add.push({ sid: m.sid, name: m.name, card: card, basic: false });
+  });
+  /* 카드 없는 모둠원도 남은 자리만큼만 기본 카드 차례에 넣고, 넘치면 over로(말없이 빠지지 않게, 2026-11-17 검토) */
+  const room = Math.max(0, max - add.length);
+  return { group: Number(resp.group) || 0, add: add, noCard: noCard.slice(0, room), over: over.concat(noCard.slice(room)) };
+}
+
 /* 단서 퀴즈 제한 시간(초): 문장이 길수록 길게(2026-11-17). 글자 수는 공백 포함 낱자 수. */
 function quizSecondsFor(text) {
   const n = Array.from(String(text == null ? "" : text)).length;
@@ -440,4 +468,4 @@ function deadlineText(firstAt, hours) {
 }
 
 if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
-  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, quizSecondsFor, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
+  dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, quizSecondsFor, planGroupMembers, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
