@@ -480,3 +480,10 @@ body.eboard .quiz-timer,body.eboard .quiz-head{font-size:26px}
 @media (min-width:768px) and (max-height:860px){ .cover-banner{aspect-ratio:4/1;} }
 @keyframes coverIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
 @media (prefers-reduced-motion: reduce){ .cover-banner{animation:none;} }
+
+/* 2026-11-17 반별 제출 시간 띠(백엔드 v181). 5분 안이면 주황, 끝나면 빨강. 상태가 바뀔 때만 살짝 깜빡인다 */
+.win-bar{margin:0 0 var(--space-2);padding:var(--space-2) var(--space-3);border-radius:4px;border:1px solid var(--jade);background:var(--jade-wash);color:var(--jade);font:700 16px/1.5 var(--sans)}
+.win-bar.soon{border-color:var(--saffron);background:var(--saffron-wash);color:var(--saffron-ink);animation:winPulse 1.6s ease-in-out 2}
+.win-bar.closed{border-color:var(--alert);background:#fbe9e7;color:var(--alert)}
+@keyframes winPulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.win-bar.soon{animation:none}}

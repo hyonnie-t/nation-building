@@ -15,7 +15,7 @@ const S = {
   placed: {}, cur: "", curIdx: 0, deckTop: "", picked: "", tries: 0, done1: false, marked: false, rank: REGIONS.map(r => r.id),
   region: "", compare: "", sym: "", stars: { lead: 0, guard: 0, unity: 0 }, reasonStat: "",
   final: false, members: [], raid: null, msgs: [], modalOpen: false, quiz: null, quizUsed: [], basicFor: null, basicRegion: "", raidDone: false,
-  copied: false, sending: false, submitted: false, everSubmitted: false, firstAt: 0, padletUrl: "", padletLoading: false
+  copied: false, sending: false, submitted: false, everSubmitted: false, firstAt: 0, win: null, padletUrl: "", padletLoading: false
 };
 const SAVE_KEYS = { 1: ["placed", "cur", "deckTop", "tries", "done1", "rank"], 2: ["region", "compare", "sym", "stars", "reasonStat"], 3: [] };
 const W_IDS = ["hit", "w1", "w2", "r_top", "w3", "w4"];
@@ -95,6 +95,7 @@ async function postToSheet(payload) {
   if (json.result !== "success") {
     const err = new Error(json.message || "저장 실패");
     err.locked = !!json.locked;
+    err.closed = !!json.closed; // 반별 제출 시간이 끝남(백엔드 v181)
     throw err;
   }
   return json;
@@ -143,7 +144,7 @@ function startApp() {
     renderStarInputs();
     show("p2");
     setTimeout(refreshCounts, 700); // draft_guard가 글을 되살린 뒤 글자 수·카드를 다시 그린다
-    restoreSubmitted();
+    loadWindow().then(() => restoreSubmitted()).then(() => { renderSummary(); renderWindow(); });
   } else {
     show("p3");
     loadFirstMember();
@@ -645,7 +646,7 @@ function renderSummary() {
   const short = n < PART2.totalMin;
   $("bodyCount").textContent = "내가 쓴 글 " + n + "자 (지역·쪽수·별 제외)" + (short ? " — " + PART2.totalMin + "자 이상 써 보자." : "");
   $("bodyCount").classList.toggle("warn", short);
-  $("submitBtn").disabled = S.submitted || S.sending;
+  $("submitBtn").disabled = S.submitted || S.sending || (!S.everSubmitted && classOpen() === false);
   $("submitBtn").textContent = S.submitted ? "제출 완료" : (S.everSubmitted ? PART2.resubmitBtn : PART2.submitBtn);
   $("copyBtn").hidden = !S.submitted; // 고치는 중에는 옛 글이 복사되지 않게 숨긴다
   $("editBtn").hidden = !(S.submitted && canEdit());
@@ -685,7 +686,8 @@ function p2Problem() {
 async function submitPart2() {
   if (S.sending || S.submitted) return;
   $("outErr").textContent = "";
-  if (S.everSubmitted && !canEdit()) { await expireEdit(); return; } // 고치는 사이 12시간이 지났으면 내지 않는다
+  if (S.everSubmitted && !canEdit()) { await expireEdit(); return; } // 고치는 사이 기한이 지났으면 내지 않는다
+  if (!S.everSubmitted && classOpen() === false) { renderWindow(); $("outErr").textContent = PART2.closedMsg; return; } // 반 제출 시간이 끝남
   const prob = p2Problem();
   if (prob && !skip()) { $("outErr").textContent = prob[1]; toast(prob[1]); $(prob[0]).scrollIntoView({ behavior: "smooth", block: "center" }); return; } // 그 칸으로 옮겨 가도 무엇이 빠졌는지 보이게 토스트도 띄운다
   const noPage = PG_IDS.filter(id => !val(id));
@@ -708,8 +710,9 @@ async function submitPart2() {
   try {
     await postToSheet(payload);
   } catch (e) {
-    $("outErr").textContent = e.locked ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘. (패들렛은 제출한 뒤에 열려.)";
-    S.sending = false; renderSummary();
+    if (e.closed) { S.win = Object.assign({}, S.win || {}, { timed: true, started: true, open: false, closesLocal: 0 }); scheduleWindowPoll(); }
+    $("outErr").textContent = e.closed ? PART2.closedMsg : e.locked ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘. (패들렛은 제출한 뒤에 열려.)";
+    S.sending = false; renderSummary(); renderWindow();
     return;
   }
   S.copied = await copyP;
@@ -735,12 +738,58 @@ function lockPart2() {
 }
 
 /* 제출 뒤 고치기(2026-11-04 효니 요청). 다시 내면 시트에 새 행이 쌓이고, 3부·복원은 가장 최근 행을 읽는다. */
-const canEdit = () => canEditAt(S.firstAt, Date.now(), PART2.editHours);
-const editUntil = () => deadlineText(S.firstAt, PART2.editHours);
+/* 2026-11-17 효니 쪽지: 반별 제출 시간(백엔드 v181 mode=timedWindow)이 있으면 그 시간만 본다. 응답이 없으면(옛 백엔드·인터넷) 예전처럼 첫 제출부터 12시간. */
+const classOpen = () => classWindowOpen(S.win, Date.now()); // true·false, 제한 정보 없으면 null
+const canEdit = () => { const o = classOpen(); return o === null ? canEditAt(S.firstAt, Date.now(), PART2.editHours) : o; };
+const editUntil = () => (S.win && S.win.timed && S.win.started && S.win.closesLocal) ? clockText(S.win.closesLocal) : deadlineText(S.firstAt, PART2.editHours);
+
+async function loadWindow() {
+  if (S.preview || !S.sid) return;
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), 10000) : 0;
+  try {
+    const url = CONFIG.SHEET_WEBAPP_URL + "?mode=timedWindow&activityId=" + encodeURIComponent(CONFIG.GAME_NAMES[2])
+      + "&studentId=" + encodeURIComponent(S.sid) + "&name=" + encodeURIComponent(S.name);
+    const j = await (await fetch(url, ctl ? { signal: ctl.signal } : undefined)).json();
+    if (j && j.result === "success" && typeof j.timed === "boolean") { // 옛 백엔드는 교사 조회로 가 «인증 실패» → 그대로 null
+      S.win = { timed: j.timed, started: !!j.started, open: j.open !== false, closesLocal: j.started ? Date.now() + (Number(j.remainMs) || 0) : 0, extended: !!j.extended };
+    }
+  } catch (e) { /* 못 받으면 예전처럼 */ } finally { if (timer) clearTimeout(timer); }
+  scheduleWindowPoll();
+}
+
+/* 닫힌 동안은 1분마다(선생님이 열어 줬는지), 열린 동안은 5분마다 서버와 맞춘다 */
+let winPollTimer = 0, winTickTimer = 0;
+function scheduleWindowPoll() {
+  clearTimeout(winPollTimer);
+  if (!S.win || !S.win.timed) return;
+  winPollTimer = setTimeout(async () => { const was = classOpen(); await loadWindow(); if (was !== classOpen()) { renderSummary(); } renderWindow(); }, classOpen() === false ? 60000 : 300000);
+  clearInterval(winTickTimer);
+  winTickTimer = setInterval(renderWindow, 1000);
+}
+
+let winWasOpen = null;
+function renderWindow() {
+  const bar = $("winBar");
+  if (!bar) return;
+  const o = classOpen();
+  if (o === null || !S.win.started) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.classList.toggle("closed", !o);
+  const left = S.win.closesLocal - Date.now();
+  bar.classList.toggle("soon", o && left < 5 * 60000);
+  bar.textContent = o ? PART2.winOpenMsg(remainText(left), clockText(S.win.closesLocal)) : PART2.winClosedMsg;
+  if (winWasOpen !== null && winWasOpen !== o) { // 시간이 끝나거나 다시 열린 순간 버튼을 다시 그린다
+    if (!o && S.everSubmitted && !S.submitted && !S.sending) expireEdit(); // 고치던 중이면 마지막 낸 카드로 잠근다
+    else renderSummary();
+    if (!o) scheduleWindowPoll();
+  }
+  winWasOpen = o;
+}
 
 function editPart2() {
   if (!S.submitted || S.sending) return;
-  if (!canEdit()) { renderSummary(); $("outMsg").textContent = PART2.expiredMsg; return; } // 화면을 켜 둔 채 기한이 지난 경우
+  if (!canEdit()) { renderSummary(); $("outMsg").textContent = expiredText(); return; } // 화면을 켜 둔 채 기한이 지난 경우
   S.submitted = false;
   P2_FIELDS().forEach(id => { $(id).readOnly = false; });
   renderPicks();
@@ -757,7 +806,10 @@ async function expireEdit() {
   if (window.DraftGuard) DraftGuard.clear();
   await restoreSubmitted();
   if (!S.submitted) { S.submitted = true; lockPart2(); } // 인터넷이 끊겨 못 불러와도 잠근다
-  $("outMsg").textContent = PART2.expiredMsg;
+  $("outMsg").textContent = expiredText();
+}
+function expiredText() {
+  return classOpen() === false ? PART2.winExpiredMsg : PART2.expiredMsg;
 }
 
 /* 고치는 중에 화면이 새로고침돼도 서버의 옛 카드로 덮이지 않게, 이 기기·이 학번으로 고치던 내용을 남겨 둔다. 다시 내면 지운다. */
@@ -777,7 +829,7 @@ function readEditSnapshot() {
     const v = JSON.parse(localStorage.getItem(editKey()) || "null");
     if (!v) return null;
     const ok = v.f && typeof v.f === "object" && v.name === S.name && v.stars && typeof v.stars === "object"
-      && starSum(v.stars) <= RAID.starTotal && canEditAt(v.firstAt, Date.now(), PART2.editHours);
+      && starSum(v.stars) <= RAID.starTotal && (classOpen() === null ? canEditAt(v.firstAt, Date.now(), PART2.editHours) : classOpen());
     if (!ok) clearEditSnapshot(); // 깨졌거나 오래됐거나 이름이 다르면 쓰지 않고 지운다(공용 태블릿)
     return ok ? v : null;
   } catch (e) { clearEditSnapshot(); return null; }
@@ -817,7 +869,7 @@ async function restoreSubmitted() {
     clearSave();
     lockPart2();
     refreshCounts();
-    $("outMsg").textContent = canEdit() ? PART2.restoredMsg(editUntil()) : PART2.expiredMsg;
+    $("outMsg").textContent = canEdit() ? PART2.restoredMsg(editUntil()) : expiredText();
   } catch (e) { /* 못 불러오면 그냥 새로 쓰는 화면 */ }
 }
 

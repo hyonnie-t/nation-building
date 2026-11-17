@@ -10,6 +10,17 @@ let n = 0;
 const J = x => JSON.stringify(x);
 const t = (name, fn) => { fn(); n++; console.log("ok - " + name); };
 
+t("반별 제출 시간(백엔드 v181): 정보 없으면 null, 시작 전 열림, 마감 뒤 닫힘", () => {
+  assert.equal(L.classWindowOpen(null, 5), null);
+  assert.equal(L.classWindowOpen({ timed: false }, 5), null);
+  assert.equal(L.classWindowOpen({ timed: true, started: false, open: true }, 5), true);
+  assert.equal(L.classWindowOpen({ timed: true, started: true, closesLocal: 10 }, 9), true);
+  assert.equal(L.classWindowOpen({ timed: true, started: true, closesLocal: 10 }, 10), false);
+  assert.equal(L.remainText(45 * 60e3), "45분");
+  assert.equal(L.remainText(4 * 60e3 + 5e3), "4분 5초");
+  assert.equal(L.remainText(-3), "0초");
+});
+
 t("고치기 기한: 학생별 가장 이른 제출부터 12시간", () => {
   const first = "2026-11-05T01:00:00.000Z", later = "2026-11-05T03:00:00.000Z";
   const at = L.firstSubmitAt([{ timestamp: later }, { timestamp: first }, { timestamp: "" }]);
