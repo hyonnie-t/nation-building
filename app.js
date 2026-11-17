@@ -180,6 +180,7 @@ function startApp() {
     S.padletLoading = true; // 마무리 글도 우리 반 패들렛(포트폴리오)으로 — 로그인한 이 학생의 반(2026-11-17)
     loadPadletUrl(p.grade, p.ban).then(u => { S.padletUrl = u; S.padletLoading = false; renderPadlet(); });
     restoreSubmitted3();
+    if (S.writeOnly) { finalOnly(); return; } // ?write=1: 레이드 없이 바로 마무리(각자 기기·이미 레이드를 한 반, 2026-11-17)
     loadFirstMember();
   }
 }
@@ -1727,7 +1728,8 @@ function retryRaid() {
 function openFinal() {
   if (S.final) return;
   $("finalBox").hidden = false;
-  $("who3Q").textContent = PART3.who3(S.name, S.sid);
+  $("who3Q").textContent = S.writeOnly ? PART3.who3Write(S.name, S.sid) : PART3.who3(S.name, S.sid);
+  renderP1Recap();
   renderMyCard3();
   fillLast3();
   renderFinal3();
@@ -1741,7 +1743,26 @@ function renderFinal3() {
   renderPadlet();
 }
 
-function buildOutText3() { return S.sid + " " + S.name + "\n[3차시 마무리] " + val("t3"); }
+/* 패들렛 한 글: 1차시 순위·이유(서버에 낸 가장 최근 것) + 3차시 마무리(2026-11-17 효니 «1, 3차시 합쳐서 하나의 글로»). 1차시를 안 냈으면 3차시만. */
+function buildOutText3() { return S.sid + " " + S.name + "\n" + (S.p1Text ? p1OutLines(S.p1Text) + "\n\n" : "") + "[3차시 마무리] " + val("t3"); }
+
+/* 1차시 G열 «[순위] 1 … > 7 …\n이유» → «[1차시 순위] …\n[1차시 이유] …» */
+function p1OutLines(t) {
+  const lines = String(t || "").trim().split("\n");
+  const head = /^\[순위\]\s*/.test(lines[0]) ? "[1차시 순위] " + lines.shift().replace(/^\[순위\]\s*/, "") : "";
+  const why = lines.join("\n").trim();
+  return [head, why ? "[1차시 이유] " + why : ""].filter(Boolean).join("\n");
+}
+
+function renderP1Recap() {
+  const box = $("p1Recap");
+  if (!box) return;
+  box.innerHTML = "";
+  box.hidden = !S.p1Text;
+  if (!S.p1Text) return;
+  box.appendChild(el("b", "my-card3-head", PART3.p1Title));
+  p1OutLines(S.p1Text).split("\n").forEach(l => box.appendChild(el("p", "", l.replace(/^\[1차시 (순위|이유)\]\s*/, "$1: "))));
+}
 
 /* 전에 낸 마무리(서버 시트 가장 최근 행). 이 기능 전에 낸 학생도 패들렛에 올릴 수 있게 한다. */
 async function restoreSubmitted3() {
@@ -1749,7 +1770,15 @@ async function restoreSubmitted3() {
   try {
     const url = CONFIG.SHEET_WEBAPP_URL + "?mode=student&studentId=" + encodeURIComponent(S.sid) + "&name=" + encodeURIComponent(S.name);
     const json = await (await fetch(url)).json();
-    const acts = (json.activities || []).filter(a => a.activityId === CONFIG.GAME_NAMES[3] && a.reflection);
+    const all = json.activities || [];
+    const p1 = all.filter(a => a.activityId === CONFIG.GAME_NAMES[1] && a.reflection);
+    if (p1.length) { S.p1Text = String(p1[p1.length - 1].reflection); renderP1Recap(); }
+    if (S.writeOnly && !S.members.length) { // 바로 마무리 주소: 레이드를 안 거치니 2차시 카드로 «내 카드» 요약만
+      const p2 = all.filter(a => a.activityId === CONFIG.GAME_NAMES[2] && a.reflection);
+      const c = p2.length ? parseCardText(p2[p2.length - 1].reflection, REGIONS, STATS) : null;
+      if (c) { S.members.push({ sid: S.sid, name: S.name, basic: false, card: c }); renderMyCard3(); }
+    }
+    const acts = all.filter(a => a.activityId === CONFIG.GAME_NAMES[3] && a.reflection);
     if (!acts.length || S.everSubmitted) return;
     S.everSubmitted = true; S.last3 = String(acts[acts.length - 1].reflection || "");
     if (!$("finalBox").hidden) { fillLast3(); renderFinal3(); }
@@ -1832,6 +1861,8 @@ function init() {
   S.final = S.part === 3 && q.get("final") === "1";
   if (S.final) document.body.classList.add("eboard"); // 전자칠판: 큰 글씨
   S.preview = q.get("preview") === "1";
+  S.writeOnly = S.part === 3 && !S.final && q.get("write") === "1"; // 바로 마무리 쓰기 주소
+  if (S.writeOnly) document.body.classList.add("write-only");
   let sid = (q.get("sid") || "").trim(), name = (q.get("name") || "").trim();
   if (S.preview) {
     $("previewBar").textContent = "미리보기 모드 — 저장되지 않아 · 활동을 다 안 해도 넘어갈 수 있어";
@@ -1844,7 +1875,7 @@ function init() {
   $("appTitle").textContent = INTRO.title;
   $("eyebrow").textContent += [" · 1차시 단서 카드", " · 2차시 역사 카드 만들기", S.final ? " · 3차시 최종 보스전" : " · 3차시 열강 보스 레이드"][S.part - 1];
   $("introQ").textContent = INTRO.question;
-  $("introLead").textContent = [INTRO.part1Lead, INTRO.part2Lead, INTRO.part3Lead][S.part - 1];
+  $("introLead").textContent = S.writeOnly ? PART3.writeLead : [INTRO.part1Lead, INTRO.part2Lead, INTRO.part3Lead][S.part - 1];
 
   $("boardQ").textContent = PART1.boardQ;
   $("boardHow").textContent = PART1.how;
