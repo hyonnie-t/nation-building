@@ -177,6 +177,9 @@ function startApp() {
     loadWindow().then(() => restoreSubmitted()).then(() => { renderSummary(); renderWindow(); });
   } else {
     show("p3");
+    S.padletLoading = true; // 마무리 글도 우리 반 패들렛(포트폴리오)으로 — 로그인한 이 학생의 반(2026-11-17)
+    loadPadletUrl(p.grade, p.ban).then(u => { S.padletUrl = u; S.padletLoading = false; renderPadlet(); });
+    restoreSubmitted3();
     loadFirstMember();
   }
 }
@@ -684,14 +687,16 @@ function renderSummary() {
   renderPadlet();
 }
 
-function renderPadlet() {
-  const a = $("padletBtn");
+function renderPadlet() { // 2차시(padletBtn)·3차시 마무리(padletBtn3) 같은 규칙: 한 번이라도 제출해야 열린다
+  const sfx = S.part === 3 ? "3" : "";
+  const a = $("padletBtn" + sfx), msg = $("padletMsg" + sfx);
+  if (!a || !msg) return;
   if (!S.everSubmitted) {
-    a.hidden = true; $("padletMsg").textContent = "제출하면 패들렛 버튼이 열려.";
+    a.hidden = true; msg.textContent = "제출하면 패들렛 버튼이 열려.";
   } else if (S.padletUrl) {
-    a.href = S.padletUrl; a.hidden = false; $("padletMsg").textContent = "";
+    a.href = S.padletUrl; a.hidden = false; msg.textContent = "";
   } else {
-    a.hidden = true; $("padletMsg").textContent = S.padletLoading ? "우리 반 패들렛 링크를 불러오는 중이야…" : "패들렛 링크는 선생님이 알려 준 곳을 써 줘.";
+    a.hidden = true; msg.textContent = S.padletLoading ? "우리 반 패들렛 링크를 불러오는 중이야…" : "패들렛 링크는 선생님이 알려 준 곳을 써 줘.";
   }
 }
 
@@ -1724,6 +1729,43 @@ function openFinal() {
   $("finalBox").hidden = false;
   $("who3Q").textContent = PART3.who3(S.name, S.sid);
   renderMyCard3();
+  fillLast3();
+  renderFinal3();
+}
+
+/* 마무리 제출 버튼·다시 복사·패들렛 상태(2026-11-17). 이 기기에서 낸 뒤엔 잠그고, 새로고침 뒤 서버에 낸 기록이 있으면 다시 낼 수 있게 둔다(예전과 같음). */
+function renderFinal3() {
+  $("p3Submit").textContent = S.submitted ? "제출 완료" : S.sending ? "보내는 중…" : (S.everSubmitted ? PART3.resubmitBtn : PART3.submitBtn);
+  $("p3Submit").disabled = S.submitted || S.sending;
+  $("copy3Btn").hidden = !S.everSubmitted || S.sending;
+  renderPadlet();
+}
+
+function buildOutText3() { return S.sid + " " + S.name + "\n[3차시 마무리] " + val("t3"); }
+
+/* 전에 낸 마무리(서버 시트 가장 최근 행). 이 기능 전에 낸 학생도 패들렛에 올릴 수 있게 한다. */
+async function restoreSubmitted3() {
+  if (S.preview || S.final) return;
+  try {
+    const url = CONFIG.SHEET_WEBAPP_URL + "?mode=student&studentId=" + encodeURIComponent(S.sid) + "&name=" + encodeURIComponent(S.name);
+    const json = await (await fetch(url)).json();
+    const acts = (json.activities || []).filter(a => a.activityId === CONFIG.GAME_NAMES[3] && a.reflection);
+    if (!acts.length || S.everSubmitted) return;
+    S.everSubmitted = true; S.last3 = String(acts[acts.length - 1].reflection || "");
+    if (!$("finalBox").hidden) { fillLast3(); renderFinal3(); }
+  } catch (e) { /* 못 읽으면 처음 내는 화면 그대로 */ }
+}
+
+function fillLast3() {
+  if (!S.last3 || S.submitted || val("t3")) return; // 쓰고 있던 글(임시저장)이 있으면 덮지 않는다
+  $("t3").value = S.last3;
+  $("t3c").textContent = val("t3").length + "자";
+  $("p3Out").textContent = PART3.restoredNote;
+}
+
+async function copyOut3() {
+  const ok = await copyText(buildOutText3());
+  $("p3Out").textContent = ok ? "복사했어. 패들렛 내 번호 칸에 붙여 넣어 줘." : "복사가 안 됐어. 한 번 더 눌러 줘.";
 }
 
 /* 마무리 질문 위에 기기 주인 카드 요약(힌트가 «필살기 칸을 다시 읽어 봐»라서). 카드가 없거나 기본 카드면 숨긴다(2026-11-16). */
@@ -1753,7 +1795,8 @@ async function submitPart3() {
   if (t.length < 5 && !skip()) { $("p3Err").textContent = "한두 문장 써 줘."; return; }
   if (t.length < PART3.finalMin && !skip() && !confirm("아직 " + t.length + "자야. 그래도 제출할까?")) return;
   $("p3Err").textContent = "";
-  S.sending = true; $("p3Submit").disabled = true; $("p3Submit").textContent = "보내는 중…";
+  const copyP = Promise.race([copyText(buildOutText3()), new Promise(r => setTimeout(() => r(false), 3000))]); // 클릭 직후에 복사를 먼저 시작해야 브라우저가 허용한다(2차시와 같음)
+  S.sending = true; renderFinal3();
   const st = S.raid;
   const result = st && st.over ? (st.over === "win" ? "레이드 승리" : "레이드 패배") : "레이드 전";
   const payload = {
@@ -1768,15 +1811,16 @@ async function submitPart3() {
   try {
     await postToSheet(payload);
   } catch (e) {
-    $("p3Err").textContent = e.locked || /로그인/.test(e.message || "") ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘.";
-    S.sending = false; $("p3Submit").disabled = false; $("p3Submit").textContent = PART3.submitBtn;
+    $("p3Err").textContent = (e.locked || /로그인/.test(e.message || "") ? e.message : "저장이 안 됐어. 인터넷을 확인하고 다시 눌러 줘.") + " (패들렛은 제출한 뒤에 열려.)";
+    S.sending = false; renderFinal3();
     return;
   }
-  S.sending = false; S.submitted = true;
+  const copied = await copyP;
+  S.sending = false; S.submitted = true; S.everSubmitted = true;
   if (!S.preview && window.DraftGuard) DraftGuard.clear();
   $("t3").readOnly = true;
-  $("p3Submit").textContent = "제출 완료";
-  $("p3Out").textContent = S.preview ? "미리보기라 저장하지 않았어." : PART3.doneMsg;
+  renderFinal3();
+  $("p3Out").textContent = S.preview ? "미리보기라 저장하지 않았어. " + (copied ? "글은 복사했어." : "복사는 안 됐어. «다시 복사»를 눌러 봐.") : (copied ? PART3.copiedDone : PART3.copyFailDone);
 }
 
 /* ── 부팅 (모든 함수 선언 뒤, 파일 맨 마지막) ── */
@@ -1847,6 +1891,9 @@ function init() {
   $("finalQ").textContent = PART3.finalQ;
   $("finalHint").textContent = PART3.finalHint;
   $("p3Submit").textContent = PART3.submitBtn;
+  $("copy3Btn").textContent = PART3.copyBtn;
+  $("padletGuide3").textContent = PART3.padletGuide;
+  $("padletBtn3").textContent = PART2.padletBtn;
 
   $("startBtn").addEventListener("click", startApp);
   if (S.final) { show("p3"); loadFirstMember(); } // 전자칠판은 학번 입력 없이 바로 대표 카드 불러오기
@@ -1878,6 +1925,7 @@ function init() {
   $("submitBtn").addEventListener("click", submitPart2);
   $("t3").addEventListener("input", () => { $("t3c").textContent = val("t3").length + "자"; $("p3Err").textContent = ""; });
   $("p3Submit").addEventListener("click", submitPart3);
+  $("copy3Btn").addEventListener("click", copyOut3);
   $("mLoad").addEventListener("click", loadMember);
   $("basicJoin").addEventListener("click", joinBasic);
   $("raidStart").addEventListener("click", startRaid);
