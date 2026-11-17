@@ -461,11 +461,27 @@ function firstSubmitAt(acts) {
 function canEditAt(firstAt, now, hours) {
   return firstAt > 0 && now < firstAt + hours * 36e5;
 }
+/* 2026-11-17 반별 제출 시간(백엔드 v181 mode=timedWindow). win = {timed, started, open, closesLocal(이 기기 시계로 바꾼 마감 ms)}.
+ * 응답이 없거나(옛 백엔드·인터넷) 제한 없는 활동이면 null → 예전처럼 학생별 12시간. 시작 전이면 열림. */
+function classWindowOpen(win, now) {
+  if (!win || !win.timed) return null;
+  if (!win.started) return win.open !== false;
+  return now < win.closesLocal;
+}
+function remainText(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60), r = s % 60;
+  return m ? m + "분" + (m < 10 ? " " + r + "초" : "") : r + "초";
+}
+function clockText(t) {
+  const d = new Date(t), h = d.getHours(), m = d.getMinutes();
+  return (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시 " + m + "분";
+}
 function deadlineText(firstAt, hours) {
   const d = new Date(firstAt + hours * 36e5);
   const h = d.getHours(), m = d.getMinutes();
   return (d.getMonth() + 1) + "월 " + d.getDate() + "일 " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시" + (m ? " " + m + "분" : "");
 }
 
-if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
+if (typeof module !== "undefined") module.exports = { firstSubmitAt, canEditAt, deadlineText, classWindowOpen, remainText, clockText, TRAP_SLOT, slotKey, answerSlot, checkBoard, occupant, shuffledIds, deckWindow, deckPageTop, moveCard, charCounts, moveRank, oneLine, cleanPage, hp, starSum, starsLeft, topStats, canSetStar, cardText, parseCardText,
   dice, clip, raidMember, newRaid, teamIdx, currentActor, canSpecial, act, makeQuiz, quizSecondsFor, planGroupMembers, japanAfter, bossTurn, japanEvent, simpleSkill, playRaid, seeded, mirrorRow, spriteRows, spritePal };
